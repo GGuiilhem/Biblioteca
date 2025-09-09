@@ -1,0 +1,154 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Usuários</h1>
+        <a href="/usuarios/novo" class="btn btn-primary">
+            <i class="bi bi-plus-lg"></i> Novo Usuário
+        </a>
+    </div>
+
+    <div class="card">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover" id="tabelaUsuarios">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Nome</th>
+                            <th>E-mail</th>
+                            <th>Matrícula</th>
+                            <th>Tipo</th>
+                            <th>Status</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Dados serão carregados via JavaScript -->
+                        <tr>
+                            <td colspan="7" class="text-center">Carregando usuários...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Confirmação de Exclusão -->
+<div class="modal fade" id="confirmarExclusaoModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Confirmar Exclusão</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+            </div>
+            <div class="modal-body">
+                Tem certeza que deseja excluir este usuário? Esta ação não pode ser desfeita.
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-danger" id="confirmarExclusao">Excluir</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Função para formatar o status
+        function formatarStatus(ativo) {
+            return ativo 
+                ? '<span class="badge bg-success">Ativo</span>'
+                : '<span class="badge bg-danger">Inativo</span>';
+        }
+
+        // Função para formatar o tipo de usuário
+        function formatarTipoUsuario(tipo) {
+            const tipos = {
+                'aluno': 'Aluno',
+                'professor': 'Professor',
+                'funcionario': 'Funcionário',
+                'admin': 'Administrador'
+            };
+            return tipos[tipo] || tipo;
+        }
+
+        // Função para carregar usuários
+        function carregarUsuarios() {
+            fetch('/api/v1/usuarios')
+                .then(response => response.json())
+                .then(usuarios => {
+                    const tbody = document.querySelector('#tabelaUsuarios tbody');
+                    tbody.innerHTML = '';
+                    
+                    if (usuarios.length === 0) {
+                        tbody.innerHTML = `
+                            <tr>
+                                <td colspan="7" class="text-center">Nenhum usuário cadastrado.</td>
+                            </tr>
+                        `;
+                        return;
+                    }
+
+                    usuarios.forEach(usuario => {
+                        const tr = document.createElement('tr');
+                        tr.innerHTML = `
+                            <td>${usuario.id}</td>
+                            <td>${usuario.nome}</td>
+                            <td>${usuario.email}</td>
+                            <td>${usuario.matricula}</td>
+                            <td>${formatarTipoUsuario(usuario.tipo)}</td>
+                            <td>${formatarStatus(usuario.ativo)}</td>
+                            <td>
+                                <a href="/usuarios/${usuario.id}" class="btn btn-sm btn-info text-white" title="Visualizar">
+                                    <i class="bi bi-eye"></i>
+                                </a>
+                                <a href="/usuarios/editar/${usuario.id}" class="btn btn-sm btn-warning text-white" title="Editar">
+                                    <i class="bi bi-pencil"></i>
+                                </a>
+                                <button class="btn btn-sm btn-danger btn-excluir" data-id="${usuario.id}" title="Excluir">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </td>
+                        `;
+                        tbody.appendChild(tr);
+                    });
+
+                    // Adiciona eventos aos botões de exclusão
+                    document.querySelectorAll('.btn-excluir').forEach(btn => {
+                        btn.addEventListener('click', function() {
+                            const usuarioId = this.getAttribute('data-id');
+                            const modal = new bootstrap.Modal(document.getElementById('confirmarExclusaoModal'));
+                            
+                            document.getElementById('confirmarExclusao').onclick = function() {
+                                // Aqui vai a lógica para excluir o usuário
+                                alert(`Usuário ${usuarioId} será excluído.`);
+                                modal.hide();
+                            };
+                            
+                            modal.show();
+                        });
+                    });
+                })
+                .catch(error => {
+                    console.error('Erro ao carregar usuários:', error);
+                    const tbody = document.querySelector('#tabelaUsuarios tbody');
+                    tbody.innerHTML = `
+                        <tr>
+                            <td colspan="7" class="text-center text-danger">
+                                Erro ao carregar usuários. Tente novamente mais tarde.
+                            </td>
+                        </tr>
+                    `;
+                });
+        }
+
+        // Carrega os usuários quando a página é carregada
+        carregarUsuarios();
+    });
+</script>
+{% endblock %}

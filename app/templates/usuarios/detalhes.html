@@ -1,0 +1,286 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-8 offset-md-2">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h2 class="mb-0">Perfil do Usuário</h2>
+                    <div>
+                        <a href="/usuarios/editar/{{ usuario.id }}" class="btn btn-warning btn-sm">
+                            <i class="bi bi-pencil"></i> Editar
+                        </a>
+                        <a href="/usuarios" class="btn btn-secondary btn-sm">
+                            <i class="bi bi-arrow-left"></i> Voltar
+                        </a>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="row mb-4">
+                        <div class="col-md-3 text-center">
+                            <div class="mb-3">
+                                <i class="bi bi-person-circle" style="font-size: 5rem; color: #6c757d;"></i>
+                            </div>
+                            <div>
+                                <span class="badge {{ 'bg-primary' if usuario.tipo == 'aluno' else 'bg-success' if usuario.tipo == 'professor' else 'bg-info text-dark' }}">
+                                    {{ 'Aluno' if usuario.tipo == 'aluno' else 'Professor' if usuario.tipo == 'professor' else 'Funcionário' }}
+                                </span>
+                                <span class="badge {{ 'bg-success' if usuario.ativo else 'bg-secondary' }}">
+                                    {{ 'Ativo' if usuario.ativo else 'Inativo' }}
+                                </span>
+                            </div>
+                        </div>
+                        <div class="col-md-9">
+                            <h3>{{ usuario.nome }}</h3>
+                            <p class="text-muted">
+                                <i class="bi bi-envelope"></i> {{ usuario.email }}
+                            </p>
+                            <hr>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="mb-2">
+                                        <strong>CPF:</strong> 
+                                        <span>{{ '{}.{}.{}-{}'.format(usuario.cpf[:3], usuario.cpf[3:6], usuario.cpf[6:9], usuario.cpf[9:]) if usuario.cpf else '-' }}</span>
+                                    </div>
+                                    <div class="mb-2">
+                                        <strong>Matrícula:</strong> 
+                                        <span>{{ usuario.matricula or '-' }}</span>
+                                    </div>
+                                    {% if usuario.curso %}
+                                    <div class="mb-2">
+                                        <strong>Curso:</strong> 
+                                        <span>{{ usuario.curso }}</span>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="mb-2">
+                                        <strong>Telefone:</strong> 
+                                        <span id="telefone">-</span>
+                                    </div>
+                                    <div class="mb-2">
+                                        <strong>Data de Nascimento:</strong> 
+                                        <span id="dataNascimento">-</span>
+                                    </div>
+                                    <div class="mb-2">
+                                        <strong>Data de Cadastro:</strong> 
+                                        <span id="dataCadastro">-</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h5 class="mb-0">Endereço</h5>
+                        </div>
+                        <div class="card">
+                            <div class="card-body" id="endereco">
+                                <p class="text-muted fst-italic">Nenhum endereço cadastrado.</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h5 class="mb-0">Empréstimos Ativos</h5>
+                            <span class="badge bg-primary" id="totalEmprestimos">0 empréstimos</span>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="table table-hover" id="tabelaEmprestimos">
+                                <thead>
+                                    <tr>
+                                        <th>Livro</th>
+                                        <th>Data do Empréstimo</th>
+                                        <th>Devolução Prevista</th>
+                                        <th>Status</th>
+                                        <th>Ações</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td colspan="5" class="text-center">Carregando...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Dados passados do servidor
+    const usuarioId = JSON.parse('{{ usuario_id|tojson|safe }}');
+    
+    document.addEventListener('DOMContentLoaded', function() {
+        
+        // Função para formatar data
+        function formatarData(dataString) {
+            if (!dataString) return '-';
+            const data = new Date(dataString);
+            return data.toLocaleDateString('pt-BR');
+        }
+        
+        // Função para formatar CPF
+        function formatarCPF(cpf) {
+            if (!cpf) return '-';
+            return cpf.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
+        }
+        
+        // Função para formatar telefone
+        function formatarTelefone(telefone) {
+            if (!telefone) return '-';
+            return telefone.replace(/(\d{2})(\d{5})(\d{4})/, '($1) $2-$3');
+        }
+        
+        // Carrega os dados do usuário
+        function carregarUsuario() {
+            fetch(`/api/v1/usuarios/${usuarioId}`)
+                .then(response => response.json())
+                .then(usuario => {
+                    // Atualiza os campos com os dados do usuário
+                    document.getElementById('nomeUsuario').textContent = usuario.nome;
+                    document.getElementById('email').textContent = usuario.email || 'Não informado';
+                    document.getElementById('cpf').textContent = formatarCPF(usuario.cpf);
+                    document.getElementById('matricula').textContent = usuario.matricula || 'Não informada';
+                    document.getElementById('curso').textContent = usuario.curso || 'Não informado';
+                    document.getElementById('telefone').textContent = formatarTelefone(usuario.telefone);
+                    document.getElementById('dataNascimento').textContent = formatarData(usuario.data_nascimento);
+                    document.getElementById('dataCadastro').textContent = formatarData(usuario.data_cadastro);
+                    
+                    if (usuario.endereco) {
+                        document.getElementById('endereco').innerHTML = `<p>${usuario.endereco}</p>`;
+                    }
+                    
+                    // Atualiza o tipo de usuário
+                    const tipoUsuario = document.getElementById('tipoUsuario');
+                    tipoUsuario.textContent = formatarTipoUsuario(usuario.tipo);
+                    tipoUsuario.className = 'badge ' + getTipoUsuarioBadgeClass(usuario.tipo);
+                    
+                    // Atualiza o status do usuário
+                    const statusUsuario = document.getElementById('statusUsuario');
+                    statusUsuario.textContent = usuario.ativo ? 'Ativo' : 'Inativo';
+                    statusUsuario.className = 'badge ' + (usuario.ativo ? 'bg-success' : 'bg-danger');
+                    
+                    // Carrega os empréstimos do usuário
+                    carregarEmprestimosDoUsuario(usuarioId);
+                })
+                .catch(error => {
+                    console.error('Erro ao carregar usuário:', error);
+                    alert('Erro ao carregar os dados do usuário. Tente novamente mais tarde.');
+                });
+        }
+        
+        // Carrega os empréstimos do usuário
+        function carregarEmprestimosDoUsuario(usuarioId) {
+            fetch(`/api/v1/usuarios/${usuarioId}/emprestimos`)
+                .then(response => response.json())
+                .then(emprestimos => {
+                    const tbody = document.querySelector('#tabelaEmprestimos tbody');
+                    tbody.innerHTML = '';
+                    
+                    if (emprestimos.length === 0) {
+                        tbody.innerHTML = `
+                            <tr>
+                                <td colspan="5" class="text-center">Nenhum empréstimo ativo encontrado.</td>
+                            </tr>
+                        `;
+                        document.getElementById('totalEmprestimos').textContent = '0 empréstimos';
+                        return;
+                    }
+                    
+                    document.getElementById('totalEmprestimos').textContent = 
+                        `${emprestimos.length} ${emprestimos.length === 1 ? 'empréstimo' : 'empréstimos'}`;
+                    
+                    emprestimos.forEach(emprestimo => {
+                        const tr = document.createElement('tr');
+                        tr.innerHTML = `
+                            <td>${emprestimo.livro.titulo}</td>
+                            <td>${formatarData(emprestimo.data_emprestimo)}</td>
+                            <td>${formatarData(emprestimo.data_devolucao_prevista)}</td>
+                            <td>
+                                <span class="badge" data-status-emprestimo="${emprestimo.status}">
+                                    ${formatarStatusEmprestimo(emprestimo.status)}
+                                </span>
+                            </td>
+                            <td>
+                                <a href="/emprestimos/${emprestimo.id}" class="btn btn-sm btn-info text-white" title="Visualizar">
+                                    <i class="bi bi-eye"></i>
+                                </a>
+                            </td>
+                        `;
+                        tbody.appendChild(tr);
+                    });
+                })
+                .catch(error => {
+                    console.error('Erro ao carregar empréstimos:', error);
+                    const tbody = document.querySelector('#tabelaEmprestimos tbody');
+                    tbody.innerHTML = `
+                        <tr>
+                            <td colspan="5" class="text-center text-danger">
+                                Erro ao carregar os empréstimos. Tente novamente mais tarde.
+                            </td>
+                        </tr>
+                    `;
+                });
+        }
+        
+        // Funções auxiliares
+        function formatarTipoUsuario(tipo) {
+            const tipos = {
+                'aluno': 'Aluno',
+                'professor': 'Professor',
+                'funcionario': 'Funcionário',
+                'admin': 'Administrador'
+            };
+            return tipos[tipo] || tipo;
+        }
+        
+        function getTipoUsuarioBadgeClass(tipo) {
+            const tipoClasses = {
+                'aluno': 'bg-primary',
+                'professor': 'bg-info text-dark',
+                'funcionario': 'bg-secondary',
+                'admin': 'bg-dark'
+            };
+            return tipoClasses[tipo] || 'bg-secondary';
+        }
+        
+        function formatarStatusEmprestimo(status) {
+            const statusMap = {
+                'ativo': 'Ativo',
+                'finalizado': 'Finalizado',
+                'atrasado': 'Atrasado',
+                'devolvido': 'Devolvido'
+            };
+            return statusMap[status] || status;
+        }
+        
+        function getStatusEmprestimoBadgeClass(status) {
+            const statusClasses = {
+                'ativo': 'bg-success',
+                'finalizado': 'bg-secondary',
+                'atrasado': 'bg-danger',
+                'devolvido': 'bg-info text-dark'
+            };
+            return statusClasses[status] || 'bg-secondary';
+        }
+        
+        // Inicializa a página
+        carregarUsuario();
+        
+        // Aplica as classes de status após o carregamento
+        document.querySelectorAll('[data-status-emprestimo]').forEach(badge => {
+            const status = badge.getAttribute('data-status-emprestimo');
+            badge.className = 'badge ' + getStatusEmprestimoBadgeClass(status);
+        });
+    });
+</script>
+{% endblock %}

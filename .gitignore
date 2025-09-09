@@ -1,0 +1,5 @@
+biblioteca.db
+__pycache__/
+*__init__*
+*.py[cod]
+venv/

@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="mb-0">{% if autor_id %}Editar Autor{% else %}Novo Autor{% endif %}</h2>
+                </div>
+                <div class="card-body">
+                    <form id="formAutor">
+                        <input type="hidden" id="autorId" value="{{ autor_id or '' }}">
+                        
+                        <div class="mb-3">
+                            <label for="nome" class="form-label">Nome *</label>
+                            <input type="text" class="form-control" id="nome" required>
+                            <div class="invalid-feedback">Por favor, informe o nome do autor.</div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="nacionalidade" class="form-label">Nacionalidade</label>
+                                <input type="text" class="form-control" id="nacionalidade">
+                            </div>
+                            
+                            <div class="col-md-6 mb-3">
+                                <label for="dataNascimento" class="form-label">Data de Nascimento</label>
+                                <input type="date" class="form-control" id="dataNascimento">
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="biografia" class="form-label">Biografia</label>
+                            <textarea class="form-control" id="biografia" rows="4"></textarea>
+                        </div>
+                        
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                            <a href="/autores" class="btn btn-secondary me-md-2">
+                                <i class="bi bi-arrow-left"></i> Voltar
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-save"></i> Salvar
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const form = document.getElementById('formAutor');
+        const autorId = document.getElementById('autorId').value;
+        
+        // Se estiver editando, carrega os dados do autor
+        if (autorId) {
+            carregarAutor(autorId);
+        }
+        
+        // Validação do formulário
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            if (!form.checkValidity()) {
+                e.stopPropagation();
+                form.classList.add('was-validated');
+                return;
+            }
+            
+            const autorData = {
+                nome: document.getElementById('nome').value,
+                nacionalidade: document.getElementById('nacionalidade').value,
+                data_nascimento: document.getElementById('dataNascimento').value,
+                biografia: document.getElementById('biografia').value
+            };
+            
+            // Aqui vai a lógica para salvar o autor
+            console.log('Dados do autor:', autorData);
+            alert('Autor salvo com sucesso!');
+            window.location.href = '/autores';
+        });
+        
+        function carregarAutor(id) {
+            // Aqui vai a lógica para carregar os dados do autor
+            console.log(`Carregando autor com ID: ${id}`);
+            // Simulando uma requisição
+            setTimeout(() => {
+                // Dados de exemplo - substituir pela chamada à API
+                const autorExemplo = {
+                    nome: 'Autor de Exemplo',
+                    nacionalidade: 'Brasileiro',
+                    data_nascimento: '1980-01-01',
+                    biografia: 'Biografia do autor de exemplo.'
+                };
+                
+                document.getElementById('nome').value = autorExemplo.nome;
+                document.getElementById('nacionalidade').value = autorExemplo.nacionalidade || '';
+                document.getElementById('dataNascimento').value = autorExemplo.data_nascimento || '';
+                document.getElementById('biografia').value = autorExemplo.biografia || '';
+            }, 500);
+        }
+    });
+</script>
+{% endblock %}

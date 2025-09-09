@@ -1,0 +1,133 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Autores</h1>
+        <a href="/autores/novo" class="btn btn-primary">
+            <i class="bi bi-plus-lg"></i> Novo Autor
+        </a>
+    </div>
+
+    <div class="card">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover" id="tabelaAutores">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Nome</th>
+                            <th>Nacionalidade</th>
+                            <th>Data de Nascimento</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Os dados serão carregados via JavaScript -->
+                        <tr>
+                            <td colspan="5" class="text-center">Carregando autores...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Confirmação de Exclusão -->
+<div class="modal fade" id="confirmarExclusaoModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Confirmar Exclusão</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+            </div>
+            <div class="modal-body">
+                Tem certeza que deseja excluir este autor? Esta ação não pode ser desfeita.
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-danger" id="confirmarExclusao">Excluir</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Função para carregar autores
+        function carregarAutores() {
+            fetch('/api/v1/autores')
+                .then(response => response.json())
+                .then(autores => {
+                    const tbody = document.querySelector('#tabelaAutores tbody');
+                    tbody.innerHTML = '';
+                    
+                    if (autores.length === 0) {
+                        tbody.innerHTML = `
+                            <tr>
+                                <td colspan="5" class="text-center">Nenhum autor cadastrado.</td>
+                            </tr>
+                        `;
+                        return;
+                    }
+
+                    autores.forEach(autor => {
+                        const tr = document.createElement('tr');
+                        tr.innerHTML = `
+                            <td>${autor.id}</td>
+                            <td>${autor.nome}</td>
+                            <td>${autor.nacionalidade || '-'}</td>
+                            <td>${autor.data_nascimento ? new Date(autor.data_nascimento).toLocaleDateString('pt-BR') : '-'}</td>
+                            <td>
+                                <a href="/autores/${autor.id}" class="btn btn-sm btn-info text-white" title="Visualizar">
+                                    <i class="bi bi-eye"></i>
+                                </a>
+                                <a href="/autores/editar/${autor.id}" class="btn btn-sm btn-warning text-white" title="Editar">
+                                    <i class="bi bi-pencil"></i>
+                                </a>
+                                <button class="btn btn-sm btn-danger btn-excluir" data-id="${autor.id}" title="Excluir">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </td>
+                        `;
+                        tbody.appendChild(tr);
+                    });
+
+                    // Adiciona eventos aos botões de exclusão
+                    document.querySelectorAll('.btn-excluir').forEach(btn => {
+                        btn.addEventListener('click', function() {
+                            const autorId = this.getAttribute('data-id');
+                            const modal = new bootstrap.Modal(document.getElementById('confirmarExclusaoModal'));
+                            
+                            document.getElementById('confirmarExclusao').onclick = function() {
+                                // Aqui vai a lógica para excluir o autor
+                                alert(`Autor ${autorId} será excluído.`);
+                                modal.hide();
+                            };
+                            
+                            modal.show();
+                        });
+                    });
+                })
+                .catch(error => {
+                    console.error('Erro ao carregar autores:', error);
+                    const tbody = document.querySelector('#tabelaAutores tbody');
+                    tbody.innerHTML = `
+                        <tr>
+                            <td colspan="5" class="text-center text-danger">
+                                Erro ao carregar autores. Tente novamente mais tarde.
+                            </td>
+                        </tr>
+                    `;
+                });
+        }
+
+        // Carrega os autores quando a página é carregada
+        carregarAutores();
+    });
+</script>
+{% endblock %}

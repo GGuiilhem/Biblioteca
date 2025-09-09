@@ -1,0 +1,130 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-8 offset-md-2">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h2 class="mb-0">Detalhes do Autor</h2>
+                    <div>
+                        <a href="/autores/editar/{{ autor.id }}" class="btn btn-warning btn-sm">
+                            <i class="bi bi-pencil"></i> Editar
+                        </a>
+                        <a href="/autores" class="btn btn-secondary btn-sm">
+                            <i class="bi bi-arrow-left"></i> Voltar
+                        </a>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="row mb-4">
+                        <div class="col-md-4 text-center">
+                            <div class="mb-3">
+                                <i class="bi bi-person-badge" style="font-size: 5rem; color: #6c757d;"></i>
+                            </div>
+                        </div>
+                        <div class="col-md-8">
+                            <h3>{{ autor.nome }}</h3>
+                            {% if autor.nacionalidade %}
+                            <p class="text-muted">
+                                <i class="bi bi-globe-americas"></i> {{ autor.nacionalidade }}
+                            </p>
+                            {% endif %}
+                            <hr>
+                            {% if autor.data_nascimento %}
+                            <div class="mb-2">
+                                <strong>Data de Nascimento:</strong> 
+                                <span>{{ autor.data_nascimento.strftime('%d/%m/%Y') }}</span>
+                            </div>
+                            {% endif %}
+                            <div class="mb-2">
+                                <strong>Data de Cadastro:</strong> 
+                                <span>{{ autor.data_cadastro.strftime('%d/%m/%Y') }}</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <h5>Biografia</h5>
+                        <div class="card">
+                            <div class="card-body">
+                                {% if autor.biografia %}
+                                    {{ autor.biografia }}
+                                {% else %}
+                                    <p class="text-muted fst-italic">Nenhuma biografia disponível.</p>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h5 class="mb-0">Livros do Autor</h5>
+                            <span class="badge bg-primary">{{ livros|length }} livro{% if livros|length != 1 %}s{% endif %}</span>
+                        </div>
+                        {% if livros %}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Título</th>
+                                        <th>Editora</th>
+                                        <th>Ano</th>
+                                        <th>Status</th>
+                                        <th class="text-end">Ações</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for livro in livros %}
+                                    <tr>
+                                        <td>{{ livro.titulo }}</td>
+                                        <td>{{ livro.editora.nome if livro.editora else '-' }}</td>
+                                        <td>{{ livro.ano_publicacao if livro.ano_publicacao else '-' }}</td>
+                                        <td>
+                                            <span class="badge {{ 'bg-success' if livro.status == 'disponível' else 'bg-warning' }}">
+                                                {{ livro.status|title }}
+                                            </span>
+                                        </td>
+                                        <td class="text-end">
+                                            <a href="/livros/{{ livro.id }}" class="btn btn-sm btn-outline-primary">
+                                                <i class="bi bi-eye"></i> Ver
+                                            </a>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        {% else %}
+                        <div class="alert alert-info">
+                            <i class="bi bi-info-circle"></i> Nenhum livro encontrado para este autor.
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Aplica as classes de status aos badges
+        document.querySelectorAll('[data-badge-status]').forEach(badge => {
+            const status = badge.getAttribute('data-badge-status');
+            const statusClasses = {
+                'disponível': 'bg-success',
+                'emprestado': 'bg-warning text-dark',
+                'reservado': 'bg-info text-dark',
+                'em manutenção': 'bg-secondary'
+            };
+            
+            if (statusClasses[status]) {
+                badge.className = 'badge ' + statusClasses[status];
+            }
+        });
+    });
+</script>
+{% endblock %}

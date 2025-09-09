@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+
+{% block content %}
+<!-- Hero Section -->
+<section class="hero-section">
+    <div class="container">
+        <div class="hero-content text-center">
+            <h1 class="hero-title">Bem-vindo à Biblioteca Digital</h1>
+            <p class="hero-subtitle">Gerencie seu acervo de livros, autores e empréstimos de forma simples, moderna e eficiente.</p>
+            <div class="d-flex justify-content-center gap-3">
+                <a href="/livros" class="btn btn-light btn-lg">Explorar Livros</a>
+                <a href="/autores" class="btn btn-outline-light btn-lg">Ver Autores</a>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Features Section -->
+<section class="features-section">
+    <div class="container">
+        <h2 class="text-center section-title">Nossos Serviços</h2>
+        <div class="row g-4">
+            <div class="col-md-4">
+                <div class="feature-card">
+                    <div class="card-body text-center">
+                        <div class="feature-icon">
+                            <i class="bi bi-book"></i>
+                        </div>
+                        <h3>Acervo Digital</h3>
+                        <p>Acesse milhares de títulos em nosso catálogo digital completo, disponível 24 horas por dia.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="feature-card">
+                    <div class="card-body text-center">
+                        <div class="feature-icon">
+                            <i class="bi bi-people"></i>
+                        </div>
+                        <h3>Gestão Inteligente</h3>
+                        <p>Controle de usuários, empréstimos e devoluções de forma organizada e automatizada.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="feature-card">
+                    <div class="card-body text-center">
+                        <div class="feature-icon">
+                            <i class="bi bi-graph-up"></i>
+                        </div>
+                        <h3>Relatórios Avançados</h3>
+                        <p>Gere relatórios detalhados e análises sobre o acervo e movimentações da biblioteca.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Stats Section -->
+<section class="stats-section">
+    <div class="container">
+        <div class="row">
+            <div class="col-md-3">
+                <div class="stat-item">
+                    <span class="stat-number" data-count="1000">0</span>
+                    <span class="stat-label">Livros</span>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stat-item">
+                    <span class="stat-number" data-count="500">0</span>
+                    <span class="stat-label">Autores</span>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stat-item">
+                    <span class="stat-number" data-count="50">0</span>
+                    <span class="stat-label">Categorias</span>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stat-item">
+                    <span class="stat-number" data-count="24">0</span>
+                    <span class="stat-label">Horas/Dia</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- CTA Section -->
+<section class="cta-section">
+    <div class="container">
+        <div class="cta-content">
+            <h2 class="cta-title">Comece a explorar agora mesmo</h2>
+            <p class="cta-text">Descubra um mundo de conhecimento ao seu alcance. Cadastre-se gratuitamente e tenha acesso ao nosso acervo completo.</p>
+            <a href="/register" class="btn btn-primary btn-lg me-3">Criar Conta</a>
+            <a href="/login" class="btn btn-outline-light btn-lg">Entrar</a>
+        </div>
+    </div>
+</section>
+
+{% endblock %}

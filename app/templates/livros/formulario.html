@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">Adicionar Novo Livro</h4>
+                </div>
+                <div class="card-body">
+                    <form action="/backend/livros/" method="post">
+                        <div class="mb-3">
+                            <label for="titulo" class="form-label">Título</label>
+                            <input type="text" class="form-control" id="titulo" name="titulo" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="autor_id" class="form-label">ID do Autor</label>
+                            <input type="number" class="form-control" id="autor_id" name="autor_id" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="genero" class="form-label">Gênero</label>
+                            <input type="text" class="form-control" id="genero" name="genero">
+                        </div>
+                        <div class="mb-3">
+                            <label for="ano_publicacao" class="form-label">Ano de Publicação</label>
+                            <input type="number" class="form-control" id="ano_publicacao" name="ano_publicacao">
+                        </div>
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                            <a href="/livros" class="btn btn-secondary me-md-2">Cancelar</a>
+                            <button type="submit" class="btn btn-primary">Salvar</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
