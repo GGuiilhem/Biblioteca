@@ -1,0 +1,233 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">
+                        <i class="bi bi-building me-2"></i>
+                        <span id="tituloFormulario">
+                            {% if editora_id %}Editar Editora{% else %}Nova Editora{% endif %}
+                        </span>
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <form id="editoraForm">
+                        <div class="mb-3">
+                            <label for="nome" class="form-label">Nome da Editora *</label>
+                            <input type="text" class="form-control" id="nome" name="nome" required 
+                                   placeholder="Ex: Companhia das Letras">
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="endereco" class="form-label">Endereço</label>
+                            <textarea class="form-control" id="endereco" name="endereco" rows="2" 
+                                      placeholder="Ex: Rua Bandeira Paulista, 702 - São Paulo, SP"></textarea>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="telefone" class="form-label">Telefone</label>
+                                    <input type="text" class="form-control" id="telefone" name="telefone" 
+                                           placeholder="Ex: (11) 3707-3500">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="email" class="form-label">Email</label>
+                                    <input type="email" class="form-control" id="email" name="email" 
+                                           placeholder="Ex: contato@editora.com.br">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="website" class="form-label">Website</label>
+                            <input type="url" class="form-control" id="website" name="website" 
+                                   placeholder="Ex: https://www.editora.com.br">
+                        </div>
+
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                            <a href="/editoras" class="btn btn-secondary me-md-2">
+                                <i class="bi bi-arrow-left me-1"></i>Cancelar
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-check-lg me-1"></i>Salvar Editora
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Detectar se é edição pela URL
+    const urlPath = window.location.pathname;
+    const isEdicao = urlPath.includes('/editar');
+    const editoraId = isEdicao ? urlPath.split('/')[2] : null;
+    
+    // Verificar se o usuário é admin
+    verificarPermissaoAdmin();
+    
+    // Se for edição, carregar dados da editora
+    if (isEdicao && editoraId) {
+        carregarDadosEditora(parseInt(editoraId));
+    }
+    
+    // Configurar formulário
+    document.getElementById('editoraForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        await salvarEditora();
+    });
+});
+
+async function verificarPermissaoAdmin() {
+    const token = localStorage.getItem('access_token');
+    if (!token) {
+        showToast('Você precisa estar logado para acessar esta página', 'error');
+        setTimeout(() => {
+            window.location.href = '/login';
+        }, 2000);
+        return;
+    }
+
+    try {
+        const response = await fetch('/api/v1/auth/me', {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+
+        if (response.ok) {
+            const user = await response.json();
+            if (!user.is_admin) {
+                showToast('Acesso negado. Apenas administradores podem gerenciar editoras.', 'error');
+                setTimeout(() => {
+                    window.location.href = '/';
+                }, 2000);
+            }
+        } else {
+            showToast('Erro ao verificar permissões', 'error');
+            setTimeout(() => {
+                window.location.href = '/login';
+            }, 2000);
+        }
+    } catch (error) {
+        console.error('Erro ao verificar permissões:', error);
+        showToast('Erro ao conectar com o servidor', 'error');
+    }
+}
+
+async function carregarDadosEditora(editoraId) {
+    const token = localStorage.getItem('access_token');
+    if (!token) return;
+
+    try {
+        const response = await fetch(`/api/v1/editoras/${editoraId}`, {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+
+        if (response.ok) {
+            const editora = await response.json();
+            
+            // Preencher o formulário com os dados da editora
+            document.getElementById('nome').value = editora.nome || '';
+            document.getElementById('endereco').value = editora.endereco || '';
+            document.getElementById('telefone').value = editora.telefone || '';
+            document.getElementById('email').value = editora.email || '';
+            document.getElementById('website').value = editora.website || '';
+            
+        } else {
+            showToast('Erro ao carregar dados da editora', 'error');
+        }
+    } catch (error) {
+        console.error('Erro ao carregar editora:', error);
+        showToast('Erro ao conectar com o servidor', 'error');
+    }
+}
+
+async function salvarEditora() {
+    const token = localStorage.getItem('access_token');
+    if (!token) {
+        showToast('Você precisa estar logado para salvar editoras', 'error');
+        return;
+    }
+
+    const formData = new FormData(document.getElementById('editoraForm'));
+    const editoraData = {};
+    
+    // Converter FormData para objeto
+    for (let [key, value] of formData.entries()) {
+        if (value && value.trim() !== '') {
+            editoraData[key] = value.trim();
+        }
+    }
+
+    // Validações obrigatórias
+    if (!editoraData.nome) {
+        showToast('O nome da editora é obrigatório', 'error');
+        return;
+    }
+
+    console.log('Dados a serem enviados:', editoraData);
+
+    // Detectar se é edição
+    const urlPath = window.location.pathname;
+    const isEdicao = urlPath.includes('/editar');
+    const editoraId = isEdicao ? urlPath.split('/')[2] : null;
+
+    try {
+        const url = isEdicao ? `/api/v1/editoras/${editoraId}` : '/api/v1/editoras/';
+        const method = isEdicao ? 'PUT' : 'POST';
+        
+        const response = await fetch(url, {
+            method: method,
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify(editoraData)
+        });
+
+        if (response.ok) {
+            const mensagem = isEdicao ? 'Editora atualizada com sucesso!' : 'Editora adicionada com sucesso!';
+            showToast(mensagem, 'success');
+            setTimeout(() => {
+                window.location.href = '/editoras';
+            }, 1500);
+        } else if (response.status === 403) {
+            const acao = isEdicao ? 'editar' : 'adicionar';
+            showToast(`Acesso negado. Apenas administradores podem ${acao} editoras.`, 'error');
+        } else if (response.status === 422) {
+            const error = await response.json();
+            console.error('Erro de validação 422:', error);
+            
+            // Mostrar detalhes dos erros de validação
+            if (error.detail && Array.isArray(error.detail)) {
+                const errorMessages = error.detail.map(err => `${err.loc.join('.')}: ${err.msg}`).join('\n');
+                showToast(`Erro de validação:\n${errorMessages}`, 'error');
+            } else {
+                showToast(error.detail || 'Erro de validação dos dados', 'error');
+            }
+        } else {
+            const error = await response.json();
+            console.error('Erro ao salvar editora:', error);
+            showToast(error.detail || 'Erro ao salvar editora', 'error');
+        }
+    } catch (error) {
+        console.error('Erro ao salvar editora:', error);
+        showToast('Erro ao conectar com o servidor', 'error');
+    }
+}
+</script>
+{% endblock %}

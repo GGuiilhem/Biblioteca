@@ -8,9 +8,6 @@
                 <div class="card-header d-flex justify-content-between align-items-center">
                     <h2 class="mb-0">Detalhes do Autor</h2>
                     <div>
-                        <a href="/autores/editar/{{ autor.id }}" class="btn btn-warning btn-sm">
-                            <i class="bi bi-pencil"></i> Editar
-                        </a>
                         <a href="/autores" class="btn btn-secondary btn-sm">
                             <i class="bi bi-arrow-left"></i> Voltar
                         </a>
@@ -36,11 +33,12 @@
                                 <strong>Data de Nascimento:</strong> 
                                 <span>{{ autor.data_nascimento.strftime('%d/%m/%Y') }}</span>
                             </div>
-                            {% endif %}
+                            {% else %}
                             <div class="mb-2">
-                                <strong>Data de Cadastro:</strong> 
-                                <span>{{ autor.data_cadastro.strftime('%d/%m/%Y') }}</span>
+                                <strong>Data de Nascimento:</strong> 
+                                <span class="text-muted">Não informado</span>
                             </div>
+                            {% endif %}
                         </div>
                     </div>
                     
@@ -81,8 +79,11 @@
                                         <td>{{ livro.editora.nome if livro.editora else '-' }}</td>
                                         <td>{{ livro.ano_publicacao if livro.ano_publicacao else '-' }}</td>
                                         <td>
-                                            <span class="badge {{ 'bg-success' if livro.status == 'disponível' else 'bg-warning' }}">
-                                                {{ livro.status|title }}
+                                            <span class="badge {{ 'bg-success' if (livro.status == 'DISPONIVEL' or livro.status == 'StatusLivro.DISPONIVEL' or 'DISPONIVEL' in livro.status) else 'bg-warning' }}">
+                                                {% if livro.status == 'DISPONIVEL' or livro.status == 'StatusLivro.DISPONIVEL' or 'DISPONIVEL' in livro.status %}Disponível
+                                                {% elif livro.status == 'EMPRESTADO' or livro.status == 'StatusLivro.EMPRESTADO' or 'EMPRESTADO' in livro.status %}Emprestado
+                                                {% elif livro.status == 'EM MANUTENÇÃO' or 'MANUTENCAO' in livro.status %}Em Manutenção
+                                                {% else %}{{ livro.status }}{% endif %}
                                             </span>
                                         </td>
                                         <td class="text-end">
@@ -117,7 +118,6 @@
             const statusClasses = {
                 'disponível': 'bg-success',
                 'emprestado': 'bg-warning text-dark',
-                'reservado': 'bg-info text-dark',
                 'em manutenção': 'bg-secondary'
             };
             

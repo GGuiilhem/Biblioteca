@@ -1,0 +1,314 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Empréstimos</h1>
+        <a href="/emprestimos/novo" class="btn btn-primary" id="btnNovoEmprestimo" style="display: none;">
+            <i class="bi bi-plus-lg"></i> Novo Empréstimo
+        </a>
+    </div>
+
+    <!-- Filtros -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-3">
+                    <label for="filtroStatus" class="form-label">Status</label>
+                    <select class="form-select" id="filtroStatus">
+                        <option value="">Todos</option>
+                        <option value="ativo">Ativo</option>
+                        <option value="devolvido">Devolvido</option>
+                        <option value="atrasado">Atrasado</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label for="filtroUsuario" class="form-label">Usuário</label>
+                    <input type="text" class="form-control" id="filtroUsuario" placeholder="Nome do usuário">
+                </div>
+                <div class="col-md-3">
+                    <label for="filtroLivro" class="form-label">Livro</label>
+                    <input type="text" class="form-control" id="filtroLivro" placeholder="Título do livro">
+                </div>
+                <div class="col-md-3 d-flex align-items-end">
+                    <button class="btn btn-outline-secondary w-100" onclick="aplicarFiltros()">
+                        <i class="bi bi-funnel"></i> Filtrar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover" id="tabelaEmprestimos">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Usuário</th>
+                            <th>Livro</th>
+                            <th>Autor</th>
+                            <th>Data Empréstimo</th>
+                            <th>Devolução Prevista</th>
+                            <th>Status</th>
+                            <th>Multa</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td colspan="9" class="text-center">Carregando empréstimos...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Devolução -->
+<div class="modal fade" id="modalDevolucao" tabindex="-1" aria-labelledby="modalDevolucaoLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalDevolucaoLabel">Registrar Devolução</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="formDevolucao">
+                <div class="modal-body">
+                    <input type="hidden" id="emprestimoIdDevolucao">
+                    
+                    <div class="mb-3">
+                        <label for="multaDevolucao" class="form-label">Multa (R$)</label>
+                        <input type="number" class="form-control" id="multaDevolucao" min="0" step="0.01" value="0">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="observacoesDevolucao" class="form-label">Observações</label>
+                        <textarea class="form-control" id="observacoesDevolucao" rows="3" 
+                                  placeholder="Observações sobre a devolução (opcional)"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-success">Registrar Devolução</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+let isUserAdmin = false;
+let emprestimos = [];
+
+document.addEventListener('DOMContentLoaded', function() {
+    verificarPermissoesAdmin();
+});
+
+async function verificarPermissoesAdmin() {
+    const token = localStorage.getItem('access_token');
+    if (!token) {
+        showToast('Você precisa estar logado para acessar esta página', 'error');
+        setTimeout(() => {
+            window.location.href = '/';
+        }, 2000);
+        return;
+    }
+
+    try {
+        const response = await fetch('/api/v1/auth/me', {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+
+        if (response.ok) {
+            const user = await response.json();
+            if (user.is_admin) {
+                isUserAdmin = true;
+                document.getElementById('btnNovoEmprestimo').style.display = 'inline-block';
+                carregarEmprestimos();
+            } else {
+                showToast('Acesso negado. Apenas administradores podem gerenciar empréstimos.', 'error');
+                setTimeout(() => {
+                    window.location.href = '/';
+                }, 2000);
+            }
+        } else {
+            showToast('Erro ao verificar permissões', 'error');
+            setTimeout(() => {
+                window.location.href = '/';
+            }, 2000);
+        }
+    } catch (error) {
+        console.error('Erro ao verificar permissões:', error);
+        showToast('Erro ao conectar com o servidor', 'error');
+        setTimeout(() => {
+            window.location.href = '/';
+        }, 2000);
+    }
+}
+
+async function carregarEmprestimos() {
+    const token = localStorage.getItem('access_token');
+    if (!token) return;
+
+    try {
+        const response = await fetch('/api/v1/emprestimos/', {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+
+        if (response.ok) {
+            emprestimos = await response.json();
+            renderizarEmprestimos(emprestimos);
+        } else {
+            const error = await response.json();
+            showToast(error.detail || 'Erro ao carregar empréstimos', 'error');
+        }
+    } catch (error) {
+        console.error('Erro ao carregar empréstimos:', error);
+        showToast('Erro ao conectar com o servidor', 'error');
+    }
+}
+
+function renderizarEmprestimos(lista) {
+    const tbody = document.querySelector('#tabelaEmprestimos tbody');
+    tbody.innerHTML = '';
+    
+    if (lista.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="9" class="text-center">Nenhum empréstimo encontrado.</td>
+            </tr>
+        `;
+        return;
+    }
+
+    lista.forEach(emprestimo => {
+        const tr = document.createElement('tr');
+        
+        // Determinar se está atrasado
+        const hoje = new Date();
+        const devolucaoPrevista = new Date(emprestimo.data_devolucao_prevista);
+        const isAtrasado = emprestimo.status === 'ativo' && hoje > devolucaoPrevista;
+        
+        // Badge do status
+        let statusBadge = '';
+        switch (emprestimo.status) {
+            case 'ativo':
+                statusBadge = isAtrasado ? 
+                    '<span class="badge bg-danger">Atrasado</span>' : 
+                    '<span class="badge bg-success">Ativo</span>';
+                break;
+            case 'devolvido':
+                statusBadge = '<span class="badge bg-secondary">Devolvido</span>';
+                break;
+            default:
+                statusBadge = `<span class="badge bg-warning">${emprestimo.status}</span>`;
+        }
+        
+        // Botões de ação
+        const acoes = emprestimo.status === 'ativo' ? `
+            <button class="btn btn-sm btn-success" onclick="abrirModalDevolucao(${emprestimo.id})" title="Registrar Devolução">
+                <i class="bi bi-check-circle"></i>
+            </button>
+        ` : '-';
+        
+        tr.innerHTML = `
+            <td>${emprestimo.id}</td>
+            <td>${emprestimo.usuario_nome || 'N/A'}</td>
+            <td>${emprestimo.livro_titulo || 'N/A'}</td>
+            <td>${emprestimo.livro_autor || 'N/A'}</td>
+            <td>${new Date(emprestimo.data_emprestimo).toLocaleDateString('pt-BR')}</td>
+            <td>${new Date(emprestimo.data_devolucao_prevista).toLocaleDateString('pt-BR')}</td>
+            <td>${statusBadge}</td>
+            <td>R$ ${emprestimo.multa.toFixed(2)}</td>
+            <td>${acoes}</td>
+        `;
+        tbody.appendChild(tr);
+    });
+}
+
+function aplicarFiltros() {
+    const filtroStatus = document.getElementById('filtroStatus').value.toLowerCase();
+    const filtroUsuario = document.getElementById('filtroUsuario').value.toLowerCase();
+    const filtroLivro = document.getElementById('filtroLivro').value.toLowerCase();
+    
+    const emprestimosFiltrados = emprestimos.filter(emp => {
+        const matchStatus = !filtroStatus || emp.status === filtroStatus;
+        const matchUsuario = !filtroUsuario || (emp.usuario_nome && emp.usuario_nome.toLowerCase().includes(filtroUsuario));
+        const matchLivro = !filtroLivro || (emp.livro_titulo && emp.livro_titulo.toLowerCase().includes(filtroLivro));
+        
+        return matchStatus && matchUsuario && matchLivro;
+    });
+    
+    renderizarEmprestimos(emprestimosFiltrados);
+}
+
+function abrirModalDevolucao(emprestimoId) {
+    document.getElementById('emprestimoIdDevolucao').value = emprestimoId;
+    document.getElementById('multaDevolucao').value = '0';
+    document.getElementById('observacoesDevolucao').value = '';
+    
+    const modal = new bootstrap.Modal(document.getElementById('modalDevolucao'));
+    modal.show();
+}
+
+document.getElementById('formDevolucao').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    await registrarDevolucao();
+});
+
+async function registrarDevolucao() {
+    const token = localStorage.getItem('access_token');
+    if (!token) return;
+
+    const emprestimoId = document.getElementById('emprestimoIdDevolucao').value;
+    const multa = parseFloat(document.getElementById('multaDevolucao').value) || 0;
+    const observacoes = document.getElementById('observacoesDevolucao').value;
+
+    try {
+        const response = await fetch(`/api/v1/emprestimos/${emprestimoId}/devolver`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({
+                multa: multa,
+                observacoes: observacoes
+            })
+        });
+
+        if (response.ok) {
+            showToast('Devolução registrada com sucesso!', 'success');
+            
+            // Fechar modal
+            const modal = bootstrap.Modal.getInstance(document.getElementById('modalDevolucao'));
+            modal.hide();
+            
+            // Recarregar lista
+            await carregarEmprestimos();
+        } else {
+            const error = await response.json();
+            showToast(error.detail || 'Erro ao registrar devolução', 'error');
+        }
+    } catch (error) {
+        console.error('Erro ao registrar devolução:', error);
+        showToast('Erro ao conectar com o servidor', 'error');
+    }
+}
+
+// Aplicar filtros quando os campos mudarem
+document.getElementById('filtroStatus').addEventListener('change', aplicarFiltros);
+document.getElementById('filtroUsuario').addEventListener('input', aplicarFiltros);
+document.getElementById('filtroLivro').addEventListener('input', aplicarFiltros);
+</script>
+{% endblock %}

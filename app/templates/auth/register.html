@@ -1,0 +1,195 @@
+{% extends "base.html" %}
+
+{% block title %}Registro - Biblioteca IMPACTA{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6 col-lg-5">
+            <div class="card shadow">
+                <div class="card-header bg-success text-white text-center">
+                    <h4><i class="fas fa-user-plus me-2"></i>Criar Conta</h4>
+                </div>
+                <div class="card-body">
+                    <form action="/api/v1/auth/register-form" method="post" id="registerForm">
+                        <div class="mb-3">
+                            <label for="nome" class="form-label">
+                                <i class="fas fa-user me-1"></i>Nome Completo
+                            </label>
+                            <input 
+                                type="text" 
+                                class="form-control" 
+                                id="nome" 
+                                name="nome" 
+                                required
+                                minlength="2"
+                                placeholder="Digite seu nome completo"
+                            >
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="email" class="form-label">
+                                <i class="fas fa-envelope me-1"></i>Email
+                            </label>
+                            <input 
+                                type="email" 
+                                class="form-control" 
+                                id="email" 
+                                name="email" 
+                                required
+                                placeholder="seu.email@impacta.edu.br"
+                            >
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="senha" class="form-label">
+                                <i class="fas fa-lock me-1"></i>Senha
+                            </label>
+                            <input 
+                                type="password" 
+                                class="form-control" 
+                                id="senha" 
+                                name="senha" 
+                                required
+                                minlength="6"
+                                placeholder="Mínimo 6 caracteres"
+                            >
+                            <div class="form-text">A senha deve ter pelo menos 6 caracteres.</div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="confirmar_senha" class="form-label">
+                                <i class="fas fa-lock me-1"></i>Confirmar Senha
+                            </label>
+                            <input 
+                                type="password" 
+                                class="form-control" 
+                                id="confirmar_senha" 
+                                name="confirmar_senha" 
+                                required
+                                minlength="6"
+                                placeholder="Digite a senha novamente"
+                            >
+                        </div>
+                        
+                        <div class="mb-3 form-check">
+                            <input type="checkbox" class="form-check-input" id="termos" required>
+                            <label class="form-check-label" for="termos">
+                                Aceito os <a href="#" data-bs-toggle="modal" data-bs-target="#termosModal">termos de uso</a>
+                            </label>
+                        </div>
+                        
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-success">
+                                <i class="fas fa-user-plus me-2"></i>Criar Conta
+                            </button>
+                        </div>
+                    </form>
+                    
+                    <hr>
+                    
+                    <div class="text-center">
+                        <p class="mb-0">Já tem uma conta?</p>
+                        <a href="/login" class="btn btn-outline-primary btn-sm">
+                            <i class="fas fa-sign-in-alt me-1"></i>Fazer login
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Termos de Uso -->
+<div class="modal fade" id="termosModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Termos de Uso - Biblioteca IMPACTA</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <h6>1. Uso do Sistema</h6>
+                <p>Este sistema é destinado exclusivamente para uso acadêmico pelos estudantes, professores e funcionários da IMPACTA.</p>
+                
+                <h6>2. Responsabilidades do Usuário</h6>
+                <p>O usuário é responsável por manter suas credenciais seguras e por todos os empréstimos realizados em sua conta.</p>
+                
+                <h6>3. Empréstimos</h6>
+                <p>Os livros devem ser devolvidos dentro do prazo estabelecido. Multas serão aplicadas em caso de atraso.</p>
+                
+                <h6>4. Privacidade</h6>
+                <p>Seus dados pessoais serão utilizados apenas para fins acadêmicos e não serão compartilhados com terceiros.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Validação do formulário
+document.getElementById('registerForm').addEventListener('submit', function(e) {
+    const nome = document.getElementById('nome').value.trim();
+    const email = document.getElementById('email').value.trim();
+    const senha = document.getElementById('senha').value;
+    const confirmarSenha = document.getElementById('confirmar_senha').value;
+    const termos = document.getElementById('termos').checked;
+    
+    // Validar campos obrigatórios
+    if (!nome || !email || !senha || !confirmarSenha) {
+        e.preventDefault();
+        alert('Por favor, preencha todos os campos.');
+        return;
+    }
+    
+    // Validar nome
+    if (nome.length < 2) {
+        e.preventDefault();
+        alert('O nome deve ter pelo menos 2 caracteres.');
+        return;
+    }
+    
+    // Validar email
+    if (!email.includes('@')) {
+        e.preventDefault();
+        alert('Por favor, digite um email válido.');
+        return;
+    }
+    
+    // Validar senha
+    if (senha.length < 6) {
+        e.preventDefault();
+        alert('A senha deve ter pelo menos 6 caracteres.');
+        return;
+    }
+    
+    // Validar confirmação de senha
+    if (senha !== confirmarSenha) {
+        e.preventDefault();
+        alert('As senhas não coincidem.');
+        return;
+    }
+    
+    // Validar termos
+    if (!termos) {
+        e.preventDefault();
+        alert('Você deve aceitar os termos de uso.');
+        return;
+    }
+});
+
+// Validação em tempo real da confirmação de senha
+document.getElementById('confirmar_senha').addEventListener('input', function() {
+    const senha = document.getElementById('senha').value;
+    const confirmarSenha = this.value;
+    
+    if (confirmarSenha && senha !== confirmarSenha) {
+        this.classList.add('is-invalid');
+    } else {
+        this.classList.remove('is-invalid');
+    }
+});
+</script>
+{% endblock %}

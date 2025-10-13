@@ -19,7 +19,6 @@ class AutorUpdate(BaseModel):
 
 class AutorInDB(AutorBase):
     id: int
-    data_cadastro: datetime
     
     class Config:
         from_attributes = True

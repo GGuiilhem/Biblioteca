@@ -40,7 +40,7 @@
                                 <i class="bi bi-arrow-left"></i> Voltar
                             </a>
                             <button type="submit" class="btn btn-primary">
-                                <i class="bi bi-save"></i> Salvar
+                                <i class="bi bi-save"></i> {% if autor_id %}Atualizar{% else %}Salvar{% endif %}
                             </button>
                         </div>
                     </form>
@@ -55,7 +55,14 @@
 <script>
     document.addEventListener('DOMContentLoaded', function() {
         const form = document.getElementById('formAutor');
-        const autorId = document.getElementById('autorId').value;
+        const autorIdElement = document.getElementById('autorId');
+        
+        if (!form) {
+            console.error('Formulário não encontrado!');
+            return;
+        }
+        
+        const autorId = autorIdElement ? autorIdElement.value : null;
         
         // Se estiver editando, carrega os dados do autor
         if (autorId) {
@@ -63,7 +70,7 @@
         }
         
         // Validação do formulário
-        form.addEventListener('submit', function(e) {
+        form.addEventListener('submit', async function(e) {
             e.preventDefault();
             
             if (!form.checkValidity()) {
@@ -72,37 +79,95 @@
                 return;
             }
             
+            const nomeElement = document.getElementById('nome');
+            const nacionalidadeElement = document.getElementById('nacionalidade');
+            const dataNascimentoElement = document.getElementById('dataNascimento');
+            const biografiaElement = document.getElementById('biografia');
+            
+            if (!nomeElement) {
+                console.error('Campo nome não encontrado!');
+                return;
+            }
+            
             const autorData = {
-                nome: document.getElementById('nome').value,
-                nacionalidade: document.getElementById('nacionalidade').value,
-                data_nascimento: document.getElementById('dataNascimento').value,
-                biografia: document.getElementById('biografia').value
+                nome: nomeElement.value,
+                nacionalidade: nacionalidadeElement ? nacionalidadeElement.value || null : null,
+                data_nascimento: dataNascimentoElement ? dataNascimentoElement.value || null : null,
+                biografia: biografiaElement ? biografiaElement.value || null : null
             };
             
-            // Aqui vai a lógica para salvar o autor
+            // Salvar o autor via API
             console.log('Dados do autor:', autorData);
-            alert('Autor salvo com sucesso!');
-            window.location.href = '/autores';
+            await salvarAutor(autorData, autorId);
         });
         
-        function carregarAutor(id) {
-            // Aqui vai a lógica para carregar os dados do autor
+        async function salvarAutor(autorData, autorId) {
+            const token = localStorage.getItem('access_token');
+            if (!token) {
+                showToast('Você precisa estar logado para salvar autores', 'error');
+                return;
+            }
+
+            const isEdicao = autorId && autorId.trim() !== '';
+            const url = isEdicao ? `/api/v1/autores/${autorId}` : '/api/v1/autores/';
+            const method = isEdicao ? 'PUT' : 'POST';
+            const mensagemSucesso = isEdicao ? 'Autor atualizado com sucesso!' : 'Autor criado com sucesso!';
+
+            try {
+                const response = await fetch(url, {
+                    method: method,
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify(autorData)
+                });
+
+                if (response.ok) {
+                    const autor = await response.json();
+                    showToast(mensagemSucesso, 'success');
+                    setTimeout(() => {
+                        window.location.href = '/autores';
+                    }, 1500);
+                } else {
+                    const error = await response.json();
+                    showToast(error.detail || 'Erro ao salvar autor', 'error');
+                }
+            } catch (error) {
+                console.error('Erro ao salvar autor:', error);
+                showToast('Erro ao conectar com o servidor', 'error');
+            }
+        }
+        
+        async function carregarAutor(id) {
             console.log(`Carregando autor com ID: ${id}`);
-            // Simulando uma requisição
-            setTimeout(() => {
-                // Dados de exemplo - substituir pela chamada à API
-                const autorExemplo = {
-                    nome: 'Autor de Exemplo',
-                    nacionalidade: 'Brasileiro',
-                    data_nascimento: '1980-01-01',
-                    biografia: 'Biografia do autor de exemplo.'
-                };
+            
+            try {
+                const response = await fetch(`/api/v1/autores/${id}`);
                 
-                document.getElementById('nome').value = autorExemplo.nome;
-                document.getElementById('nacionalidade').value = autorExemplo.nacionalidade || '';
-                document.getElementById('dataNascimento').value = autorExemplo.data_nascimento || '';
-                document.getElementById('biografia').value = autorExemplo.biografia || '';
-            }, 500);
+                if (response.ok) {
+                    const autor = await response.json();
+                    console.log('Dados do autor carregados:', autor);
+                    
+                    // Preencher os campos com os dados reais
+                    const nomeElement = document.getElementById('nome');
+                    const nacionalidadeElement = document.getElementById('nacionalidade');
+                    const dataNascimentoElement = document.getElementById('dataNascimento');
+                    const biografiaElement = document.getElementById('biografia');
+                    
+                    if (nomeElement) nomeElement.value = autor.nome || '';
+                    if (nacionalidadeElement) nacionalidadeElement.value = autor.nacionalidade || '';
+                    if (dataNascimentoElement) dataNascimentoElement.value = autor.data_nascimento || '';
+                    if (biografiaElement) biografiaElement.value = autor.biografia || '';
+                    
+                } else {
+                    console.error('Erro ao carregar autor:', response.status);
+                    showToast('Erro ao carregar dados do autor', 'error');
+                }
+            } catch (error) {
+                console.error('Erro ao carregar autor:', error);
+                showToast('Erro ao conectar com o servidor', 'error');
+            }
         }
     });
 </script>

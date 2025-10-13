@@ -1,7 +1,37 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="container mt-4">
+<!-- Tela de carregamento -->
+<div id="loadingScreen" class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-6 text-center">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Carregando...</span>
+            </div>
+            <p class="mt-3">Verificando permissões...</p>
+        </div>
+    </div>
+</div>
+
+<!-- Tela de acesso negado -->
+<div id="accessDenied" class="container mt-4" style="display: none;">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="alert alert-danger text-center">
+                <i class="bi bi-shield-exclamation fs-1 mb-3"></i>
+                <h4>Acesso Negado</h4>
+                <p>Esta página é restrita apenas para administradores.</p>
+                <p>Entre em contato com um administrador se você acredita que deveria ter acesso.</p>
+                <a href="/" class="btn btn-primary mt-3">
+                    <i class="bi bi-house me-2"></i>Voltar ao Início
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Conteúdo da página de usuários (só aparece para admins) -->
+<div id="usuariosContent" class="container mt-4" style="display: none;">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h1>Usuários</h1>
         <a href="/usuarios/novo" class="btn btn-primary">
@@ -18,16 +48,20 @@
                             <th>ID</th>
                             <th>Nome</th>
                             <th>E-mail</th>
+                            <th>Tipo de Conta</th>
                             <th>Matrícula</th>
-                            <th>Tipo</th>
+                            <th>Tipo Usuário</th>
+                            <th>Admin</th>
                             <th>Status</th>
+                            <th>Data Criação</th>
+                            <th>Último Login</th>
                             <th>Ações</th>
                         </tr>
                     </thead>
                     <tbody>
                         <!-- Dados serão carregados via JavaScript -->
                         <tr>
-                            <td colspan="7" class="text-center">Carregando usuários...</td>
+                            <td colspan="11" class="text-center">Carregando usuários...</td>
                         </tr>
                     </tbody>
                 </table>
@@ -58,29 +92,136 @@
 
 {% block scripts %}
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        // Função para formatar o status
-        function formatarStatus(ativo) {
-            return ativo 
-                ? '<span class="badge bg-success">Ativo</span>'
-                : '<span class="badge bg-danger">Inativo</span>';
-        }
+document.addEventListener('DOMContentLoaded', function() {
+    verificarPermissaoAdmin();
+});
 
-        // Função para formatar o tipo de usuário
-        function formatarTipoUsuario(tipo) {
-            const tipos = {
-                'aluno': 'Aluno',
-                'professor': 'Professor',
-                'funcionario': 'Funcionário',
-                'admin': 'Administrador'
-            };
-            return tipos[tipo] || tipo;
-        }
+async function verificarPermissaoAdmin() {
+    const token = localStorage.getItem('access_token');
+    
+    if (!token) {
+        mostrarAcessoNegado();
+        return;
+    }
 
-        // Função para carregar usuários
-        function carregarUsuarios() {
-            fetch('/api/v1/usuarios')
-                .then(response => response.json())
+    try {
+        const response = await fetch('/api/v1/auth/me', {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+
+        if (response.ok) {
+            const user = await response.json();
+            if (user.is_admin) {
+                mostrarUsuarios();
+                carregarUsuarios();
+                verificarPermissoesAdmin();
+            } else {
+                mostrarAcessoNegado();
+            }
+        } else {
+            mostrarAcessoNegado();
+        }
+    } catch (error) {
+        console.error('Erro ao verificar permissões:', error);
+        mostrarAcessoNegado();
+    }
+}
+
+function mostrarUsuarios() {
+    document.getElementById('loadingScreen').style.display = 'none';
+    document.getElementById('accessDenied').style.display = 'none';
+    document.getElementById('usuariosContent').style.display = 'block';
+}
+
+function mostrarAcessoNegado() {
+    document.getElementById('loadingScreen').style.display = 'none';
+    document.getElementById('usuariosContent').style.display = 'none';
+    document.getElementById('accessDenied').style.display = 'block';
+}
+
+async function verificarPermissoesAdmin() {
+    const token = localStorage.getItem('access_token');
+    if (!token) return;
+
+    try {
+        const response = await fetch('/api/v1/auth/me', {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+
+        if (response.ok) {
+            const user = await response.json();
+            if (user.is_admin) {
+                // Marcar que o usuário é admin para usar nas funções de listagem
+                window.isUserAdmin = true;
+            }
+        }
+    } catch (error) {
+        console.error('Erro ao verificar permissões:', error);
+    }
+}
+
+function formatarTipoUsuario(tipo) {
+    if (!tipo) return 'N/A';
+    const tipos = {
+        'aluno': 'Aluno',
+        'professor': 'Professor',
+        'funcionario': 'Funcionário',
+        'admin': 'Administrador'
+    };
+    return tipos[tipo] || tipo;
+}
+
+// Função para formatar o tipo de conta
+function formatarTipoConta(tipo) {
+    const tipos = {
+        'completa': '<span class="badge bg-success">Completa</span>',
+        'auth': '<span class="badge bg-info">Autenticação</span>'
+    };
+    return tipos[tipo] || tipo;
+}
+
+// Função para formatar data
+function formatarData(data) {
+    if (!data) return 'N/A';
+    return new Date(data).toLocaleDateString('pt-BR', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric'
+    });
+}
+
+function formatarAdmin(isAdmin) {
+    if (isAdmin) {
+        return '<span class="badge bg-danger"><i class="bi bi-shield-check me-1"></i>Admin</span>';
+    }
+    return '<span class="badge bg-secondary">Usuário</span>';
+}
+
+// Função para carregar usuários
+function carregarUsuarios() {
+            const token = localStorage.getItem('access_token');
+            const headers = {};
+            
+            if (token) {
+                headers['Authorization'] = `Bearer ${token}`;
+            }
+            
+            fetch('/api/v1/usuarios/', {
+                headers: headers
+            })
+                .then(response => {
+                    if (response.status === 403) {
+                        throw new Error('Acesso negado. Faça login para visualizar os usuários.');
+                    }
+                    if (!response.ok) {
+                        throw new Error('Erro ao carregar usuários');
+                    }
+                    return response.json();
+                })
                 .then(usuarios => {
                     const tbody = document.querySelector('#tabelaUsuarios tbody');
                     tbody.innerHTML = '';
@@ -88,7 +229,7 @@
                     if (usuarios.length === 0) {
                         tbody.innerHTML = `
                             <tr>
-                                <td colspan="7" class="text-center">Nenhum usuário cadastrado.</td>
+                                <td colspan="11" class="text-center">Nenhuma conta cadastrada.</td>
                             </tr>
                         `;
                         return;
@@ -96,13 +237,20 @@
 
                     usuarios.forEach(usuario => {
                         const tr = document.createElement('tr');
+                        const dataCriacao = usuario.data_cadastro || usuario.criado_em;
+                        const status = usuario.tipo_conta === 'auth' ? 'N/A' : formatarStatus(usuario.ativo);
+                        
                         tr.innerHTML = `
                             <td>${usuario.id}</td>
                             <td>${usuario.nome}</td>
                             <td>${usuario.email}</td>
-                            <td>${usuario.matricula}</td>
+                            <td>${formatarTipoConta(usuario.tipo_conta)}</td>
+                            <td>${usuario.matricula || 'N/A'}</td>
                             <td>${formatarTipoUsuario(usuario.tipo)}</td>
-                            <td>${formatarStatus(usuario.ativo)}</td>
+                            <td>${formatarAdmin(usuario.is_admin)}</td>
+                            <td>${status}</td>
+                            <td>${formatarData(dataCriacao)}</td>
+                            <td>${formatarData(usuario.ultimo_login)}</td>
                             <td>
                                 <a href="/usuarios/${usuario.id}" class="btn btn-sm btn-info text-white" title="Visualizar">
                                     <i class="bi bi-eye"></i>
@@ -137,18 +285,31 @@
                 .catch(error => {
                     console.error('Erro ao carregar usuários:', error);
                     const tbody = document.querySelector('#tabelaUsuarios tbody');
-                    tbody.innerHTML = `
-                        <tr>
-                            <td colspan="7" class="text-center text-danger">
-                                Erro ao carregar usuários. Tente novamente mais tarde.
-                            </td>
-                        </tr>
-                    `;
+                    
+                    if (error.message.includes('Acesso negado')) {
+                        tbody.innerHTML = `
+                            <tr>
+                                <td colspan="11" class="text-center text-warning">
+                                    <i class="bi bi-lock me-2"></i>
+                                    ${error.message}
+                                    <br>
+                                    <button class="btn btn-primary btn-sm mt-2" data-bs-toggle="modal" data-bs-target="#loginModal">
+                                        Fazer Login
+                                    </button>
+                                </td>
+                            </tr>
+                        `;
+                    } else {
+                        tbody.innerHTML = `
+                            <tr>
+                                <td colspan="11" class="text-center text-danger">
+                                    <i class="bi bi-exclamation-triangle me-2"></i>
+                                    Erro ao carregar usuários. Tente novamente mais tarde.
+                                </td>
+                            </tr>
+                        `;
+                    }
                 });
-        }
-
-        // Carrega os usuários quando a página é carregada
-        carregarUsuarios();
-    });
+}
 </script>
 {% endblock %}

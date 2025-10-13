@@ -5,10 +5,9 @@ from enum import Enum as PyEnum
 from app.core.database import Base
 
 class StatusLivro(str, PyEnum):
-    DISPONIVEL = "disponível"
-    EMPRESTADO = "emprestado"
-    RESERVADO = "reservado"
-    EM_MANUTENCAO = "em manutenção"
+    DISPONIVEL = "DISPONIVEL"
+    EMPRESTADO = "EMPRESTADO"
+    EM_MANUTENCAO = "EM MANUTENÇÃO"
 
 class StatusEmprestimo(str, PyEnum):
     ATIVO = "ativo"
@@ -21,6 +20,11 @@ class TipoUsuario(str, PyEnum):
     PROFESSOR = "professor"
     FUNCIONARIO = "funcionário"
     ADMIN = "administrador"
+
+class StatusSolicitacao(str, PyEnum):
+    PENDENTE = "pendente"
+    APROVADA = "aprovada"
+    REJEITADA = "rejeitada"
 
 class Autor(Base):
     __tablename__ = "autores"
@@ -65,6 +69,7 @@ class Livro(Base):
     ano_publicacao = Column(Integer)
     num_paginas = Column(Integer)
     sinopse = Column(Text)
+    genero = Column(String(50), nullable=True)  # Campo para compatibilidade com rotas existentes
     idioma = Column(String(20), default="Português")
     status = Column(Enum(StatusLivro), default=StatusLivro.DISPONIVEL)
     capa_url = Column(String(255), nullable=True)
@@ -92,7 +97,6 @@ class Usuario(Base):
     ativo = Column(Boolean, default=True)
     
     emprestimos = relationship("Emprestimo", back_populates="usuario")
-    reservas = relationship("Reserva", back_populates="usuario")
 
 class Emprestimo(Base):
     __tablename__ = "emprestimos"
@@ -110,18 +114,6 @@ class Emprestimo(Base):
     usuario = relationship("Usuario", back_populates="emprestimos")
     livro = relationship("Livro", back_populates="emprestimos")
 
-class Reserva(Base):
-    __tablename__ = "reservas"
-    
-    id = Column(Integer, primary_key=True, index=True)
-    usuario_id = Column(Integer, ForeignKey("usuarios.id"), nullable=False)
-    livro_id = Column(Integer, ForeignKey("livros.id"), nullable=False)
-    data_reserva = Column(DateTime, default=datetime.utcnow)
-    data_expiracao = Column(DateTime, default=lambda: datetime.utcnow() + timedelta(days=2))
-    status = Column(String(20), default="pendente")  # pendente, concluída, cancelada, expirada
-    
-    usuario = relationship("Usuario", back_populates="reservas")
-    livro = relationship("Livro")
 
 # Tabela de associação para relacionamento muitos-para-muitos entre Livro e Categoria
 class LivroCategoria(Base):
@@ -129,3 +121,35 @@ class LivroCategoria(Base):
     
     livro_id = Column(Integer, ForeignKey("livros.id"), primary_key=True)
     categoria_id = Column(Integer, ForeignKey("categorias.id"), primary_key=True)
+
+
+class UsuarioAuth(Base):
+    __tablename__ = "usuarios_auth"
+
+    id = Column(Integer, primary_key=True, index=True)
+    matricula = Column(String(20), unique=True, index=True, nullable=False)
+    nome = Column(String(100), nullable=False)
+    email = Column(String(100), unique=True, index=True, nullable=False)
+    senha_hash = Column(String(255), nullable=False)
+    is_admin = Column(Boolean, default=False, nullable=False)
+    criado_em = Column(DateTime, default=datetime.utcnow)
+    ultimo_login = Column(DateTime, nullable=True)
+
+class SolicitacaoAutor(Base):
+    __tablename__ = "solicitacoes_autores"
+
+    id = Column(Integer, primary_key=True, index=True)
+    nome = Column(String(100), nullable=False)
+    nacionalidade = Column(String(50))
+    data_nascimento = Column(Date)
+    biografia = Column(Text, nullable=True)
+    status = Column(Enum(StatusSolicitacao), default=StatusSolicitacao.PENDENTE, nullable=False)
+    solicitante_id = Column(Integer, ForeignKey("usuarios_auth.id"), nullable=False)
+    data_solicitacao = Column(DateTime, default=datetime.utcnow)
+    data_aprovacao = Column(DateTime, nullable=True)
+    aprovado_por_id = Column(Integer, ForeignKey("usuarios_auth.id"), nullable=True)
+    observacoes = Column(Text, nullable=True)
+    
+    # Relacionamentos
+    solicitante = relationship("UsuarioAuth", foreign_keys=[solicitante_id])
+    aprovado_por = relationship("UsuarioAuth", foreign_keys=[aprovado_por_id])

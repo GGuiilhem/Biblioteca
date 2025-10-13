@@ -4,9 +4,29 @@
 <div class="container mt-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h1>Autores</h1>
-        <a href="/autores/novo" class="btn btn-primary">
-            <i class="bi bi-plus-lg"></i> Novo Autor
-        </a>
+        <div>
+            <button onclick="abrirSolicitarAutor()" class="btn btn-success me-2" id="btnSolicitarAutor">
+                <i class="bi bi-person-plus"></i> Solicitar Autor
+            </button>
+            <a href="/autores/novo" class="btn btn-primary" id="btnNovoAutor" style="display: none;">
+                <i class="bi bi-plus-lg"></i> Novo Autor
+            </a>
+        </div>
+    </div>
+    
+    <!-- Campo de pesquisa -->
+    <div class="row mb-3">
+        <div class="col-md-6">
+            <div class="input-group">
+                <span class="input-group-text">
+                    <i class="bi bi-search"></i>
+                </span>
+                <input type="text" class="form-control" id="searchInput" placeholder="Pesquisar autores por nome...">
+                <button class="btn btn-outline-secondary" type="button" id="clearSearch">
+                    <i class="bi bi-x-lg"></i>
+                </button>
+            </div>
+        </div>
     </div>
 
     <div class="card">
@@ -53,23 +73,232 @@
     </div>
 </div>
 
+<!-- Modal para Solicitar Autor -->
+<div class="modal fade" id="modalSolicitarAutor" tabindex="-1" aria-labelledby="modalSolicitarAutorLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalSolicitarAutorLabel">
+                    <i class="bi bi-person-plus me-2"></i>Solicitar Novo Autor
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="formSolicitarAutor">
+                    <div class="row">
+                        <div class="col-md-8">
+                            <div class="mb-3">
+                                <label for="nomeAutor" class="form-label">Nome do Autor *</label>
+                                <input type="text" class="form-control" id="nomeAutor" name="nome" required>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label for="nacionalidadeAutor" class="form-label">Nacionalidade</label>
+                                <input type="text" class="form-control" id="nacionalidadeAutor" name="nacionalidade">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="dataNascimentoAutor" class="form-label">Data de Nascimento</label>
+                        <input type="date" class="form-control" id="dataNascimentoAutor" name="data_nascimento">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="biografiaAutor" class="form-label">Biografia</label>
+                        <textarea class="form-control" id="biografiaAutor" name="biografia" rows="4" 
+                                  placeholder="Breve biografia do autor..."></textarea>
+                    </div>
+                    
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle me-2"></i>
+                        <strong>Atenção:</strong> Sua solicitação será enviada para aprovação dos administradores. 
+                        Você receberá uma notificação quando for processada.
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-success" onclick="enviarSolicitacao()">
+                    <i class="bi bi-send me-1"></i>Enviar Solicitação
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 {% endblock %}
 
 {% block scripts %}
 <script>
+    let isUserAdmin = false;
+
     document.addEventListener('DOMContentLoaded', function() {
-        // Função para carregar autores
-        function carregarAutores() {
-            fetch('/api/v1/autores')
-                .then(response => response.json())
-                .then(autores => {
+        verificarPermissoesAdmin().then(() => {
+            carregarAutores();
+        });
+        
+        // Configurar pesquisa
+        const searchInput = document.getElementById('searchInput');
+        const clearSearch = document.getElementById('clearSearch');
+        
+        // Pesquisar ao digitar (com debounce)
+        let searchTimeout;
+        searchInput.addEventListener('input', function() {
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(() => {
+                carregarAutores(this.value.trim());
+            }, 500);
+        });
+        
+        // Limpar pesquisa
+        clearSearch.addEventListener('click', function() {
+            searchInput.value = '';
+            carregarAutores();
+        });
+        
+        // Pesquisar ao pressionar Enter
+        searchInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                clearTimeout(searchTimeout);
+                carregarAutores(this.value.trim());
+            }
+        });
+    });
+
+    async function verificarPermissoesAdmin() {
+        const token = localStorage.getItem('access_token');
+        if (!token) {
+            console.log('DEBUG - Sem token, carregando autores sem permissões admin');
+            return Promise.resolve();
+        }
+
+        try {
+            const response = await fetch('/api/v1/auth/me', {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+
+            if (response.ok) {
+                const user = await response.json();
+                console.log('DEBUG - Usuário logado:', user);
+                if (user.is_admin) {
+                    isUserAdmin = true;
+                    document.getElementById('btnNovoAutor').style.display = 'inline-block';
+                    document.getElementById('btnSolicitarAutor').style.display = 'none';
+                    console.log('DEBUG - Usuário é admin');
+                } else {
+                    console.log('DEBUG - Usuário não é admin');
+                }
+            }
+        } catch (error) {
+            console.error('Erro ao verificar permissões:', error);
+        }
+        
+        return Promise.resolve();
+    }
+
+    function abrirSolicitarAutor() {
+        const token = localStorage.getItem('access_token');
+        if (!token) {
+            showToast('Você precisa estar logado para solicitar autores', 'error');
+            setTimeout(() => {
+                // Trigger do modal de login do base.html
+                const loginModal = new bootstrap.Modal(document.getElementById('loginModal'));
+                loginModal.show();
+            }, 500);
+            return;
+        }
+        
+        const modal = new bootstrap.Modal(document.getElementById('modalSolicitarAutor'));
+        modal.show();
+    }
+
+    async function enviarSolicitacao() {
+        const token = localStorage.getItem('access_token');
+        if (!token) {
+            showToast('Você precisa estar logado para solicitar autores', 'error');
+            // Fechar modal e redirecionar para login
+            const modal = bootstrap.Modal.getInstance(document.getElementById('modalSolicitarAutor'));
+            if (modal) modal.hide();
+            setTimeout(() => {
+                // Trigger do modal de login do base.html
+                const loginModal = new bootstrap.Modal(document.getElementById('loginModal'));
+                loginModal.show();
+            }, 500);
+            return;
+        }
+
+        const formData = new FormData(document.getElementById('formSolicitarAutor'));
+        const solicitacaoData = {};
+        
+        for (let [key, value] of formData.entries()) {
+            if (value && value.trim() !== '') {
+                solicitacaoData[key] = value;
+            }
+        }
+
+        if (!solicitacaoData.nome) {
+            showToast('O nome do autor é obrigatório', 'error');
+            return;
+        }
+
+        try {
+            const response = await fetch('/api/v1/solicitacoes-autores/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify(solicitacaoData)
+            });
+
+            if (response.ok) {
+                showToast('Solicitação enviada com sucesso! Aguarde a aprovação dos administradores.', 'success');
+                
+                // Fechar modal e limpar formulário
+                const modal = bootstrap.Modal.getInstance(document.getElementById('modalSolicitarAutor'));
+                modal.hide();
+                document.getElementById('formSolicitarAutor').reset();
+            } else {
+                const error = await response.json();
+                showToast(error.detail || 'Erro ao enviar solicitação', 'error');
+            }
+        } catch (error) {
+            console.error('Erro ao enviar solicitação:', error);
+            showToast('Erro ao conectar com o servidor', 'error');
+        }
+    }
+
+    // Função para carregar autores
+    function carregarAutores(searchTerm = '') {
+        console.log('DEBUG - Carregando autores...');
+        console.log('Termo de pesquisa:', searchTerm);
+        
+        let url = '/api/v1/autores';
+        if (searchTerm) {
+            url += `?search=${encodeURIComponent(searchTerm)}`;
+        }
+        
+        fetch(url)
+            .then(response => {
+                console.log('DEBUG - Response status:', response.status);
+                return response.json();
+            })
+            .then(autores => {
+                console.log('DEBUG - Autores recebidos:', autores);
                     const tbody = document.querySelector('#tabelaAutores tbody');
                     tbody.innerHTML = '';
                     
                     if (autores.length === 0) {
+                        const mensagem = searchTerm ? 
+                            `Nenhum autor encontrado para "${searchTerm}".` : 
+                            'Nenhum autor cadastrado.';
                         tbody.innerHTML = `
                             <tr>
-                                <td colspan="5" class="text-center">Nenhum autor cadastrado.</td>
+                                <td colspan="5" class="text-center">${mensagem}</td>
                             </tr>
                         `;
                         return;
@@ -77,21 +306,27 @@
 
                     autores.forEach(autor => {
                         const tr = document.createElement('tr');
+                        
+                        // Botões de ação baseados em permissões
+                        const acoesAdmin = isUserAdmin ? `
+                            <a href="/autores/editar/${autor.id}" class="btn btn-sm btn-warning text-white me-1" title="Editar">
+                                <i class="bi bi-pencil"></i>
+                            </a>
+                            <button class="btn btn-sm btn-danger btn-excluir" data-id="${autor.id}" title="Excluir">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        ` : '';
+                        
                         tr.innerHTML = `
                             <td>${autor.id}</td>
                             <td>${autor.nome}</td>
                             <td>${autor.nacionalidade || '-'}</td>
                             <td>${autor.data_nascimento ? new Date(autor.data_nascimento).toLocaleDateString('pt-BR') : '-'}</td>
                             <td>
-                                <a href="/autores/${autor.id}" class="btn btn-sm btn-info text-white" title="Visualizar">
+                                <a href="/autores/${autor.id}" class="btn btn-sm btn-info text-white me-1" title="Visualizar">
                                     <i class="bi bi-eye"></i>
                                 </a>
-                                <a href="/autores/editar/${autor.id}" class="btn btn-sm btn-warning text-white" title="Editar">
-                                    <i class="bi bi-pencil"></i>
-                                </a>
-                                <button class="btn btn-sm btn-danger btn-excluir" data-id="${autor.id}" title="Excluir">
-                                    <i class="bi bi-trash"></i>
-                                </button>
+                                ${acoesAdmin}
                             </td>
                         `;
                         tbody.appendChild(tr);
@@ -103,9 +338,8 @@
                             const autorId = this.getAttribute('data-id');
                             const modal = new bootstrap.Modal(document.getElementById('confirmarExclusaoModal'));
                             
-                            document.getElementById('confirmarExclusao').onclick = function() {
-                                // Aqui vai a lógica para excluir o autor
-                                alert(`Autor ${autorId} será excluído.`);
+                            document.getElementById('confirmarExclusao').onclick = async function() {
+                                await excluirAutor(autorId);
                                 modal.hide();
                             };
                             
@@ -124,10 +358,36 @@
                         </tr>
                     `;
                 });
+    }
+
+    async function excluirAutor(autorId) {
+        const token = localStorage.getItem('access_token');
+        if (!token) {
+            showToast('Você precisa estar logado para excluir autores', 'error');
+            return;
         }
 
-        // Carrega os autores quando a página é carregada
-        carregarAutores();
-    });
+        try {
+            const response = await fetch(`/api/v1/autores/${autorId}`, {
+                method: 'DELETE',
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+
+            if (response.ok) {
+                showToast('Autor excluído com sucesso!', 'success');
+                carregarAutores(); // Recarregar a lista
+            } else if (response.status === 403) {
+                showToast('Acesso negado. Apenas administradores podem excluir autores.', 'error');
+            } else {
+                const error = await response.json();
+                showToast(error.detail || 'Erro ao excluir autor', 'error');
+            }
+        } catch (error) {
+            console.error('Erro ao excluir autor:', error);
+            showToast('Erro ao conectar com o servidor', 'error');
+        }
+    }
 </script>
 {% endblock %}

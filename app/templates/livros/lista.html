@@ -4,9 +4,24 @@
 <div class="container mt-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h2>Lista de Livros</h2>
-        <a href="/livros/novo" class="btn btn-primary">
+        <a href="/livros/novo" class="btn btn-primary" id="btnNovoLivro" style="display: none;">
             <i class="bi bi-plus-lg"></i> Novo Livro
         </a>
+    </div>
+    
+    <!-- Campo de pesquisa -->
+    <div class="row mb-3">
+        <div class="col-md-6">
+            <div class="input-group">
+                <span class="input-group-text">
+                    <i class="bi bi-search"></i>
+                </span>
+                <input type="text" class="form-control" id="searchInput" placeholder="Pesquisar livros por título...">
+                <button class="btn btn-outline-secondary" type="button" id="clearSearch">
+                    <i class="bi bi-x-lg"></i>
+                </button>
+            </div>
+        </div>
     </div>
     
     <div class="table-responsive">
@@ -21,29 +36,15 @@
                     <th>Ações</th>
                 </tr>
             </thead>
-            <tbody>
-                {% for livro in livros %}
+            <tbody id="livrosTableBody">
                 <tr>
-                    <td>{{ livro.id }}</td>
-                    <td>{{ livro.titulo }}</td>
-                    <td>{{ livro.autor.nome if livro.autor else 'N/A' }}</td>
-                    <td>{{ livro.genero or '-' }}</td>
-                    <td>{{ livro.ano_publicacao or '-' }}</td>
-                    <td>
-                        <a href="/livros/{{ livro.id }}/editar" class="btn btn-sm btn-outline-primary me-1">
-                            <i class="bi bi-pencil"></i>
-                        </a>
-                        <button class="btn btn-sm btn-outline-danger" 
-                                onclick="confirmarExclusao({{ livro.id }})">
-                            <i class="bi bi-trash"></i>
-                        </button>
+                    <td colspan="6" class="text-center">
+                        <div class="spinner-border spinner-border-sm me-2" role="status">
+                            <span class="visually-hidden">Carregando...</span>
+                        </div>
+                        Verificando permissões e carregando livros...
                     </td>
                 </tr>
-                {% else %}
-                <tr>
-                    <td colspan="6" class="text-center">Nenhum livro cadastrado.</td>
-                </tr>
-                {% endfor %}
             </tbody>
         </table>
     </div>
@@ -55,29 +56,541 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title">Confirmar Exclusão</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                Tem certeza que deseja excluir este livro?
+                Tem certeza que deseja excluir este livro? Esta ação não pode ser desfeita.
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                <form id="formExcluir" method="post" action="">
-                    <button type="submit" class="btn btn-danger">Excluir</button>
-                </form>
+                <button type="button" class="btn btn-danger">Excluir</button>
             </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Empréstimo -->
+<div class="modal fade" id="modalEmprestimo" tabindex="-1" aria-labelledby="modalEmprestimoLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalEmprestimoLabel">Novo Empréstimo</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="formEmprestimoModal">
+                <div class="modal-body">
+                    <input type="hidden" id="livroIdEmprestimo">
+                    
+                    <div class="mb-3">
+                        <label class="form-label"><strong>Livro Selecionado:</strong></label>
+                        <p id="tituloLivroEmprestimo" class="text-muted"></p>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="usuarioEmprestimo" class="form-label">Usuário *</label>
+                        <select class="form-select" id="usuarioEmprestimo" name="usuario_id" required>
+                            <option value="">Carregando usuários...</option>
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="observacoesEmprestimo" class="form-label">Observações</label>
+                        <textarea class="form-control" id="observacoesEmprestimo" name="observacoes" rows="3" 
+                                  placeholder="Observações sobre o empréstimo (opcional)"></textarea>
+                    </div>
+                    
+                    <div class="card bg-light">
+                        <div class="card-body">
+                            <h6 class="card-title">Informações do Empréstimo</h6>
+                            <div class="row">
+                                <div class="col-6">
+                                    <small class="text-muted">
+                                        <strong>Data de Empréstimo:</strong><br>
+                                        <span id="dataEmprestimoModal">Hoje</span>
+                                    </small>
+                                </div>
+                                <div class="col-6">
+                                    <small class="text-muted">
+                                        <strong>Data de Devolução:</strong><br>
+                                        <span id="dataDevolucaoModal">14 dias</span>
+                                    </small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-success">
+                        <i class="bi bi-check-lg me-1"></i>Criar Empréstimo
+                    </button>
+                </div>
+            </form>
         </div>
     </div>
 </div>
 
 {% block scripts %}
 <script>
-function confirmarExclusao(livroId) {
-    const form = document.getElementById('formExcluir');
-    form.action = `/backend/livros/${livroId}/excluir`;
+let isUserAdmin = false;
+let isUserLoggedIn = false;
+
+document.addEventListener('DOMContentLoaded', function() {
+    verificarPermissoes().then(() => {
+        carregarLivros();
+    });
+    
+    // Configurar pesquisa
+    const searchInput = document.getElementById('searchInput');
+    const clearSearch = document.getElementById('clearSearch');
+    
+    // Pesquisar ao digitar (com debounce)
+    let searchTimeout;
+    searchInput.addEventListener('input', function() {
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(() => {
+            carregarLivros(this.value.trim());
+        }, 500);
+    });
+    
+    // Limpar pesquisa
+    clearSearch.addEventListener('click', function() {
+        searchInput.value = '';
+        carregarLivros();
+    });
+    
+    // Pesquisar ao pressionar Enter
+    searchInput.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            clearTimeout(searchTimeout);
+            carregarLivros(this.value.trim());
+        }
+    });
+    
+    // Configurar evento do formulário do modal
+    document.getElementById('formEmprestimoModal').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        await criarEmprestimoModal();
+    });
+});
+
+async function verificarPermissoes() {
+    const token = localStorage.getItem('access_token');
+    
+    // Resetar variáveis
+    isUserLoggedIn = false;
+    isUserAdmin = false;
+    window.isUserLoggedIn = false;
+    window.isUserAdmin = false;
+    
+    if (!token) {
+        return Promise.resolve();
+    }
+
+    try {
+        const response = await fetch('/api/v1/auth/me', {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+
+        if (response.ok) {
+            const user = await response.json();
+            isUserLoggedIn = true;
+            window.isUserLoggedIn = true;
+            
+            if (user.is_admin) {
+                isUserAdmin = true;
+                window.isUserAdmin = true;
+                document.getElementById('btnNovoLivro').style.display = 'inline-block';
+            }
+        }
+    } catch (error) {
+        console.error('Erro ao verificar permissões:', error);
+    }
+    
+    // Aguardar um pouco para garantir que as variáveis sejam propagadas
+    return new Promise(resolve => setTimeout(resolve, 100));
+}
+
+async function carregarLivros(searchTerm = '') {
+    console.log('Carregando livros - isUserLoggedIn:', window.isUserLoggedIn, 'isUserAdmin:', window.isUserAdmin);
+    console.log('Termo de pesquisa:', searchTerm);
+    
+    try {
+        let url = '/api/v1/livros/';
+        if (searchTerm) {
+            url += `?search=${encodeURIComponent(searchTerm)}`;
+        }
+        
+        const response = await fetch(url);
+        const tbody = document.getElementById('livrosTableBody');
+        
+        if (response.ok) {
+            const livros = await response.json();
+            
+            if (livros.length === 0) {
+                const mensagem = searchTerm ? 
+                    `Nenhum livro encontrado para "${searchTerm}".` : 
+                    'Nenhum livro cadastrado.';
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="6" class="text-center">${mensagem}</td>
+                    </tr>
+                `;
+                return;
+            }
+            
+            tbody.innerHTML = '';
+            livros.forEach(livro => {
+                const tr = document.createElement('tr');
+                
+                // Aguardar um pouco para garantir que as variáveis globais estejam definidas
+                const isAdmin = window.isUserAdmin || false;
+                const isLoggedIn = window.isUserLoggedIn || false;
+                
+                // Botões de ação baseados no tipo de usuário
+                let acoes = '';
+                
+                if (isAdmin) {
+                    // Ações para admin
+                    acoes = `
+                        <a href="/livros/${livro.id}/editar" class="btn btn-sm btn-outline-primary me-1" title="Editar">
+                            <i class="bi bi-pencil"></i>
+                        </a>
+                        <button class="btn btn-sm btn-outline-danger me-1" 
+                                onclick="confirmarExclusao(${livro.id})" title="Excluir">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                        ${(livro.status === 'DISPONIVEL' || livro.status === 'StatusLivro.DISPONIVEL' || livro.status.includes('DISPONIVEL')) ? `
+                            <button class="btn btn-sm btn-success" 
+                                    onclick="abrirModalEmprestimo(${livro.id}, '${livro.titulo}')" title="Emprestar">
+                                <i class="bi bi-handshake me-1"></i>Emprestar
+                            </button>
+                        ` : ''}
+                    `;
+                } else if (isLoggedIn) {
+                    // Ações para usuário comum logado
+                    if (livro.status === 'DISPONIVEL' || livro.status === 'StatusLivro.DISPONIVEL' || livro.status.includes('DISPONIVEL')) {
+                        acoes = `
+                            <button class="btn btn-sm btn-success" 
+                                    onclick="solicitarEmprestimo(${livro.id}, '${livro.titulo}')" title="Solicitar Empréstimo">
+                                <i class="bi bi-handshake me-1"></i>Solicitar
+                            </button>
+                        `;
+                    } else {
+                        acoes = `<span class="badge bg-secondary">${livro.status}</span>`;
+                    }
+                } else {
+                    // Usuário não logado
+                    acoes = `
+                        <button class="btn btn-sm btn-outline-secondary" 
+                                onclick="mostrarLoginParaEmprestimo()" title="Faça login para solicitar">
+                            <i class="bi bi-lock me-1"></i>Login
+                        </button>
+                    `;
+                }
+                
+                tr.innerHTML = `
+                    <td>${livro.id}</td>
+                    <td>${livro.titulo}</td>
+                    <td>${livro.autor ? livro.autor.nome : 'N/A'}</td>
+                    <td>${livro.genero || '-'}</td>
+                    <td>${livro.ano_publicacao || '-'}</td>
+                    <td>${acoes}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        } else {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="6" class="text-center text-danger">
+                        <i class="bi bi-exclamation-triangle me-2"></i>
+                        Erro ao carregar livros. Tente novamente mais tarde.
+                    </td>
+                </tr>
+            `;
+        }
+    } catch (error) {
+        console.error('Erro ao carregar livros:', error);
+        const tbody = document.getElementById('livrosTableBody');
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="6" class="text-center text-danger">
+                    <i class="bi bi-exclamation-triangle me-2"></i>
+                    Erro ao conectar com o servidor.
+                </td>
+            </tr>
+        `;
+    }
+}
+
+async function confirmarExclusao(livroId) {
     const modal = new bootstrap.Modal(document.getElementById('confirmarExclusaoModal'));
+    
+    // Configurar o botão de exclusão
+    const btnExcluir = document.querySelector('#confirmarExclusaoModal .btn-danger');
+    btnExcluir.onclick = async function() {
+        await excluirLivro(livroId);
+        modal.hide();
+    };
+    
     modal.show();
 }
+
+async function excluirLivro(livroId) {
+    const token = localStorage.getItem('access_token');
+    if (!token) {
+        showToast('Você precisa estar logado para excluir livros', 'error');
+        return;
+    }
+
+    try {
+        const response = await fetch(`/api/v1/livros/${livroId}`, {
+            method: 'DELETE',
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+
+        if (response.ok) {
+            showToast('Livro excluído com sucesso!', 'success');
+            carregarLivros(); // Recarregar a lista
+        } else if (response.status === 403) {
+            showToast('Acesso negado. Apenas administradores podem excluir livros.', 'error');
+        } else {
+            const error = await response.json();
+            showToast(error.detail || 'Erro ao excluir livro', 'error');
+        }
+    } catch (error) {
+        console.error('Erro ao excluir livro:', error);
+        showToast('Erro ao conectar com o servidor', 'error');
+    }
+}
+
+// Função para usuários comuns solicitarem empréstimo
+async function solicitarEmprestimo(livroId, tituloLivro) {
+    const token = localStorage.getItem('access_token');
+    if (!token) {
+        showToast('Você precisa estar logado para solicitar empréstimos', 'error');
+        return;
+    }
+
+    // Confirmar solicitação
+    const confirmacao = confirm(`Deseja solicitar o empréstimo do livro "${tituloLivro}"?\n\nPrazo de devolução: 14 dias`);
+    if (!confirmacao) return;
+
+    try {
+        // Primeiro, obter o ID do usuário atual
+        const userResponse = await fetch('/api/v1/auth/me', {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+
+        if (!userResponse.ok) {
+            showToast('Erro ao verificar dados do usuário', 'error');
+            return;
+        }
+
+        const userData = await userResponse.json();
+        console.log('DEBUG - Dados do usuário logado:', userData);
+        
+        // Buscar o usuário completo na tabela de usuários
+        const usuariosResponse = await fetch('/api/v1/usuarios/', {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+
+        if (!usuariosResponse.ok) {
+            showToast('Erro ao buscar dados do usuário', 'error');
+            return;
+        }
+
+        const usuarios = await usuariosResponse.json();
+        console.log('DEBUG - Usuários encontrados na tabela usuarios:', usuarios);
+        const usuarioCompleto = usuarios.find(u => u.matricula === userData.matricula);
+        console.log('DEBUG - Usuário completo encontrado:', usuarioCompleto);
+
+        if (!usuarioCompleto) {
+            console.log('DEBUG - Usuário não encontrado, será criado automaticamente pelo backend');
+            // Em vez de falhar aqui, vamos deixar o backend criar o usuário automaticamente
+            // Vamos usar um ID temporário que será ignorado pelo backend
+            const emprestimoData = {
+                usuario_id: 999999, // ID temporário - será substituído pelo backend
+                livro_id: livroId,
+                observacoes: `Solicitação feita pelo usuário ${userData.nome} (matrícula: ${userData.matricula})`
+            };
+            
+            console.log('DEBUG - Dados do empréstimo (usuário será criado automaticamente):', emprestimoData);
+            
+            const response = await fetch('/api/v1/emprestimos/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify(emprestimoData)
+            });
+
+            if (response.ok) {
+                showToast('Empréstimo solicitado com sucesso! Prazo de devolução: 14 dias.', 'success');
+                carregarLivros();
+            } else {
+                const error = await response.json();
+                showToast(error.detail || 'Erro ao solicitar empréstimo', 'error');
+            }
+            return;
+        }
+
+        // Criar empréstimo
+        const emprestimoData = {
+            usuario_id: usuarioCompleto.id,
+            livro_id: livroId,
+            observacoes: `Solicitação feita pelo usuário ${userData.nome}`
+        };
+
+        const response = await fetch('/api/v1/emprestimos/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify(emprestimoData)
+        });
+
+        if (response.ok) {
+            showToast('Empréstimo solicitado com sucesso! Prazo de devolução: 14 dias.', 'success');
+            // Recarregar a lista para atualizar o status
+            carregarLivros();
+        } else {
+            const error = await response.json();
+            showToast(error.detail || 'Erro ao solicitar empréstimo', 'error');
+        }
+    } catch (error) {
+        console.error('Erro ao solicitar empréstimo:', error);
+        showToast('Erro ao conectar com o servidor', 'error');
+    }
+}
+
+// Função para admins abrirem modal de empréstimo
+async function abrirModalEmprestimo(livroId, tituloLivro) {
+    // Configurar dados do modal
+    document.getElementById('livroIdEmprestimo').value = livroId;
+    document.getElementById('tituloLivroEmprestimo').textContent = tituloLivro;
+    
+    // Atualizar datas
+    const hoje = new Date();
+    const devolucao = new Date();
+    devolucao.setDate(hoje.getDate() + 14);
+    
+    document.getElementById('dataEmprestimoModal').textContent = hoje.toLocaleDateString('pt-BR');
+    document.getElementById('dataDevolucaoModal').textContent = devolucao.toLocaleDateString('pt-BR');
+    
+    // Carregar usuários
+    await carregarUsuariosModal();
+    
+    // Abrir modal
+    const modal = new bootstrap.Modal(document.getElementById('modalEmprestimo'));
+    modal.show();
+}
+
+// Função para carregar usuários no modal
+async function carregarUsuariosModal() {
+    const token = localStorage.getItem('access_token');
+    if (!token) return;
+
+    try {
+        const response = await fetch('/api/v1/usuarios/', {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+
+        if (response.ok) {
+            const usuarios = await response.json();
+            const select = document.getElementById('usuarioEmprestimo');
+            
+            // Limpar opções existentes
+            select.innerHTML = '<option value="">Selecione um usuário</option>';
+            
+            // Adicionar usuários
+            usuarios.forEach(usuario => {
+                const option = document.createElement('option');
+                option.value = usuario.id;
+                option.textContent = `${usuario.nome} (${usuario.matricula})`;
+                select.appendChild(option);
+            });
+        }
+    } catch (error) {
+        console.error('Erro ao carregar usuários:', error);
+        const select = document.getElementById('usuarioEmprestimo');
+        select.innerHTML = '<option value="">Erro ao carregar usuários</option>';
+    }
+}
+
+// Função para criar empréstimo via modal
+async function criarEmprestimoModal() {
+    const token = localStorage.getItem('access_token');
+    if (!token) {
+        showToast('Você precisa estar logado para criar empréstimos', 'error');
+        return;
+    }
+
+    const livroId = document.getElementById('livroIdEmprestimo').value;
+    const usuarioId = document.getElementById('usuarioEmprestimo').value;
+    const observacoes = document.getElementById('observacoesEmprestimo').value;
+
+    if (!usuarioId) {
+        showToast('Selecione um usuário', 'error');
+        return;
+    }
+
+    const emprestimoData = {
+        usuario_id: parseInt(usuarioId),
+        livro_id: parseInt(livroId),
+        observacoes: observacoes || null
+    };
+
+    try {
+        const response = await fetch('/api/v1/emprestimos/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify(emprestimoData)
+        });
+
+        if (response.ok) {
+            showToast('Empréstimo criado com sucesso!', 'success');
+            
+            // Fechar modal
+            const modal = bootstrap.Modal.getInstance(document.getElementById('modalEmprestimo'));
+            modal.hide();
+            
+            // Recarregar lista de livros
+            carregarLivros();
+        } else {
+            const error = await response.json();
+            showToast(error.detail || 'Erro ao criar empréstimo', 'error');
+        }
+    } catch (error) {
+        console.error('Erro ao criar empréstimo:', error);
+        showToast('Erro ao conectar com o servidor', 'error');
+    }
+}
+
+// Função para mostrar modal de login quando usuário não está logado
+function mostrarLoginParaEmprestimo() {
+    showToast('Faça login para solicitar empréstimos de livros', 'info');
+    setTimeout(() => {
+        const loginModal = new bootstrap.Modal(document.getElementById('loginModal'));
+        loginModal.show();
+    }, 500);
+}
+
 </script>
 {% endblock %}
 {% endblock %}
