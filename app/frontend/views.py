@@ -244,10 +244,85 @@ async def register_page(request: Request):
     )
 
 @router.get("/dashboard", response_class=HTMLResponse)
-async def dashboard(request: Request):
+async def dashboard(request: Request, db: Session = Depends(get_db)):
+    try:
+        # Calcular estatísticas reais do banco de dados
+        from app.models.models import Livro, Usuario, StatusEmprestimo
+        from datetime import datetime
+        
+        # Total de livros
+        total_livros = db.query(Livro).count()
+        
+        # Empréstimos ativos
+        emprestimos_ativos = db.query(Emprestimo).filter(
+            Emprestimo.status == StatusEmprestimo.ATIVO
+        ).count()
+        
+        # Empréstimos atrasados (data de devolução passou e ainda está ativo)
+        hoje = datetime.now().date()
+        emprestimos_atrasados = db.query(Emprestimo).filter(
+            Emprestimo.status == StatusEmprestimo.ATIVO,
+            Emprestimo.data_devolucao_prevista < hoje
+        ).count()
+        
+        # Usuários ativos
+        usuarios_ativos = db.query(Usuario).filter(Usuario.ativo == True).count()
+        
+        # Livros mais populares (versão simplificada e consistente)
+        from sqlalchemy import func
+        
+        # Buscar os primeiros 3 livros com seus autores (dados consistentes)
+        primeiros_livros = db.query(Livro, models.Autor).join(
+            models.Autor, Livro.autor_id == models.Autor.id
+        ).limit(3).all()
+        
+        # Criar lista com contagem real de empréstimos
+        livros_populares = []
+        for livro, autor in primeiros_livros:
+            # Contar empréstimos reais para este livro
+            total_emprestimos = db.query(Emprestimo).filter(
+                Emprestimo.livro_id == livro.id
+            ).count()
+            
+            livros_populares.append({
+                'titulo': livro.titulo,
+                'autor_nome': autor.nome,
+                'total_emprestimos': total_emprestimos
+            })
+        
+        # Empréstimos recentes (últimos 5)
+        emprestimos_recentes = db.query(Emprestimo).join(
+            Livro, Emprestimo.livro_id == Livro.id
+        ).join(
+            Usuario, Emprestimo.usuario_id == Usuario.id
+        ).order_by(
+            Emprestimo.data_emprestimo.desc()
+        ).limit(5).all()
+        
+        # Estatísticas para o template
+        stats = {
+            "total_livros": total_livros,
+            "emprestimos_ativos": emprestimos_ativos,
+            "emprestimos_atrasados": emprestimos_atrasados,
+            "usuarios_ativos": usuarios_ativos,
+            "livros_populares": livros_populares,
+            "emprestimos_recentes": emprestimos_recentes
+        }
+        
+    except Exception as e:
+        # Em caso de erro, usar valores padrão
+        stats = {
+            "total_livros": 0,
+            "emprestimos_ativos": 0,
+            "emprestimos_atrasados": 0,
+            "usuarios_ativos": 0,
+            "livros_populares": [],
+            "emprestimos_recentes": []
+        }
+    
     return templates.TemplateResponse(
         "auth/dashboard.html",
-        {"request": request}
+        {"request": request, "stats": stats}
     )
 
 # Exporta o router para ser importado por outros módulos

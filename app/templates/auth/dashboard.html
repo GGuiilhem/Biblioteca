@@ -61,7 +61,7 @@
                 <div class="card-body">
                     <div class="d-flex justify-content-between">
                         <div>
-                            <h4 class="card-title">1,234</h4>
+                            <h4 class="card-title">{{ stats.total_livros if stats else 0 }}</h4>
                             <p class="card-text">Total de Livros</p>
                         </div>
                         <div class="align-self-center">
@@ -77,7 +77,7 @@
                 <div class="card-body">
                     <div class="d-flex justify-content-between">
                         <div>
-                            <h4 class="card-title">156</h4>
+                            <h4 class="card-title">{{ stats.emprestimos_ativos if stats else 0 }}</h4>
                             <p class="card-text">Empréstimos Ativos</p>
                         </div>
                         <div class="align-self-center">
@@ -93,7 +93,7 @@
                 <div class="card-body">
                     <div class="d-flex justify-content-between">
                         <div>
-                            <h4 class="card-title">23</h4>
+                            <h4 class="card-title">{{ stats.emprestimos_atrasados if stats else 0 }}</h4>
                             <p class="card-text">Empréstimos Atrasados</p>
                         </div>
                         <div class="align-self-center">
@@ -109,7 +109,7 @@
                 <div class="card-body">
                     <div class="d-flex justify-content-between">
                         <div>
-                            <h4 class="card-title">89</h4>
+                            <h4 class="card-title">{{ stats.usuarios_ativos if stats else 0 }}</h4>
                             <p class="card-text">Usuários Ativos</p>
                         </div>
                         <div class="align-self-center">
@@ -176,12 +176,24 @@
                 </div>
                 <div class="card-body">
                     <div id="emprestimosRecentes" class="list-group list-group-flush">
-                        <div class="list-group-item text-center">
-                            <div class="spinner-border spinner-border-sm" role="status">
-                                <span class="visually-hidden">Carregando...</span>
+                        {% if stats and stats.emprestimos_recentes %}
+                            {% for emprestimo in stats.emprestimos_recentes %}
+                            <div class="list-group-item d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h6 class="mb-1">{{ emprestimo.livro.titulo }}</h6>
+                                    <small class="text-muted">{{ emprestimo.usuario.nome }} - {{ emprestimo.data_emprestimo.strftime('%d/%m/%Y') }}</small>
+                                </div>
+                                <span class="badge bg-{% if emprestimo.status.value == 'ativo' %}success{% elif emprestimo.status.value == 'atrasado' %}warning{% else %}secondary{% endif %} rounded-pill">
+                                    {{ emprestimo.status.value.title() }}
+                                </span>
                             </div>
-                            <span class="ms-2">Carregando empréstimos...</span>
-                        </div>
+                            {% endfor %}
+                        {% else %}
+                            <div class="list-group-item text-center text-muted">
+                                <i class="fas fa-clock me-2"></i>
+                                Nenhum empréstimo registrado ainda
+                            </div>
+                        {% endif %}
                     </div>
                     <div class="text-center mt-3">
                         <a href="/emprestimos" class="btn btn-sm btn-outline-primary">Ver todos</a>
@@ -197,27 +209,22 @@
                 </div>
                 <div class="card-body">
                     <div class="list-group list-group-flush">
-                        <div class="list-group-item d-flex justify-content-between align-items-center">
-                            <div>
-                                <h6 class="mb-1">Clean Code</h6>
-                                <small class="text-muted">Robert C. Martin</small>
+                        {% if stats and stats.livros_populares %}
+                            {% for livro in stats.livros_populares %}
+                            <div class="list-group-item d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h6 class="mb-1">{{ livro['titulo'] }}</h6>
+                                    <small class="text-muted">{{ livro['autor_nome'] }}</small>
+                                </div>
+                                <span class="badge bg-primary rounded-pill">{{ livro['total_emprestimos'] }} empréstimos</span>
                             </div>
-                            <span class="badge bg-primary rounded-pill">23 empréstimos</span>
-                        </div>
-                        <div class="list-group-item d-flex justify-content-between align-items-center">
-                            <div>
-                                <h6 class="mb-1">Dom Casmurro</h6>
-                                <small class="text-muted">Machado de Assis</small>
+                            {% endfor %}
+                        {% else %}
+                            <div class="list-group-item text-center text-muted">
+                                <i class="fas fa-book me-2"></i>
+                                Nenhum empréstimo registrado ainda
                             </div>
-                            <span class="badge bg-primary rounded-pill">18 empréstimos</span>
-                        </div>
-                        <div class="list-group-item d-flex justify-content-between align-items-center">
-                            <div>
-                                <h6 class="mb-1">Domain-Driven Design</h6>
-                                <small class="text-muted">Eric Evans</small>
-                            </div>
-                            <span class="badge bg-primary rounded-pill">15 empréstimos</span>
-                        </div>
+                        {% endif %}
                     </div>
                     <div class="text-center mt-3">
                         <a href="/livros" class="btn btn-sm btn-outline-primary">Ver todos</a>
@@ -323,7 +330,7 @@ async function verificarPermissaoAdmin() {
             const user = await response.json();
             if (user.is_admin) {
                 mostrarDashboard();
-                carregarEstatisticas();
+                // carregarEstatisticas(); // Desabilitado - usando dados do servidor
             } else {
                 mostrarAcessoNegado();
             }
@@ -356,7 +363,7 @@ async function carregarEstatisticas() {
         carregarContadorLivros(),
         carregarContadorUsuarios(),
         carregarEmprestimosRecentes(),
-        carregarLivrosPopulares(),
+        // carregarLivrosPopulares(), // Removido - usando dados do servidor
         carregarContadorSolicitacoes(),
         carregarEmprestimosRecentes()
     ]);
@@ -397,45 +404,11 @@ async function carregarEmprestimosRecentes() {
     console.log('Empréstimos: dados estáticos (implementar quando criar sistema de empréstimos)');
 }
 
-async function carregarLivrosPopulares() {
-    try {
-        const response = await fetch('/api/v1/livros/');
-        if (response.ok) {
-            const livros = await response.json();
-            const container = document.querySelector('.card:has(.fa-star) .list-group');
-            
-            if (livros.length === 0) {
-                container.innerHTML = '<div class="list-group-item text-center text-muted">Nenhum livro cadastrado</div>';
-                return;
-            }
-            
-            // Pegar os primeiros 3 livros como "populares" (ordenar por ID decrescente para pegar os mais recentes)
-            const livrosRecentes = livros.slice(-3).reverse();
-            
-            container.innerHTML = '';
-            livrosRecentes.forEach((livro, index) => {
-                const item = document.createElement('div');
-                item.className = 'list-group-item d-flex justify-content-between align-items-center';
-                item.innerHTML = `
-                    <div>
-                        <h6 class="mb-1">${livro.titulo}</h6>
-                        <small class="text-muted">${livro.autor ? livro.autor.nome : 'Autor não informado'}</small>
-                    </div>
-                    <span class="badge bg-primary rounded-pill">${Math.floor(Math.random() * 20) + 5} empréstimos</span>
-                `;
-                container.appendChild(item);
-            });
-            
-            // Adicionar botão "Ver todos"
-            const btnContainer = document.querySelector('.card:has(.fa-star) .text-center');
-            if (btnContainer) {
-                btnContainer.innerHTML = '<a href="/livros" class="btn btn-sm btn-outline-primary">Ver todos</a>';
-            }
-        }
-    } catch (error) {
-        console.error('Erro ao carregar livros populares:', error);
-    }
-}
+// Função removida - agora usando dados do servidor renderizados no template
+// async function carregarLivrosPopulares() {
+//     // Esta função estava gerando números aleatórios com Math.random()
+//     // Agora os dados vêm diretamente do servidor via template
+// }
 
 let solicitacaoAtual = null;
 
