@@ -56,11 +56,22 @@ def read_users(
     """
     Lista todas as contas do sistema (usuários completos + contas de autenticação)
     """
-    contas = []
-    
-    # Buscar usuários completos
+    # We'll deduplicate accounts so a person who exists both in `usuarios` (profile)
+    # and `usuarios_auth` (auth only) appears only once. Matching key: matricula if
+    # present, otherwise email (lowercased).
+    contas_map = {}
+
+    def key_for(email: str = None, matricula: str = None):
+        if matricula:
+            return f"mat:{matricula}"
+        if email:
+            return f"email:{email.lower()}"
+        return None
+
+    # Fetch full accounts
     usuarios_completos = db.query(DBUsuario).offset(skip).limit(limit).all()
     for usuario in usuarios_completos:
+        k = key_for(usuario.email, usuario.matricula)
         conta = ContaUsuario(
             id=usuario.id,
             nome=usuario.nome,
@@ -72,11 +83,20 @@ def read_users(
             ativo=usuario.ativo,
             data_cadastro=usuario.data_cadastro
         )
-        contas.append(conta)
-    
-    # Buscar contas de autenticação (login/registro)
+        if k:
+            contas_map[k] = conta
+        else:
+            # fallback, ensure unique key per id
+            contas_map[f"id:{usuario.id}"] = conta
+
+    # Fetch auth-only accounts and merge only if not present
     usuarios_auth = db.query(DBUsuarioAuth).offset(skip).limit(limit).all()
     for usuario_auth in usuarios_auth:
+        k = key_for(usuario_auth.email, usuario_auth.matricula)
+        if k and k in contas_map:
+            # prefer the 'completa' conta already present
+            continue
+
         conta = ContaUsuario(
             id=usuario_auth.id,
             nome=usuario_auth.nome,
@@ -87,9 +107,13 @@ def read_users(
             ultimo_login=usuario_auth.ultimo_login,
             is_admin=usuario_auth.is_admin
         )
-        contas.append(conta)
-    
-    return contas
+        if k:
+            contas_map[k] = conta
+        else:
+            contas_map[f"auth_id:{usuario_auth.id}"] = conta
+
+    # Return deduplicated list preserving insertion order as much as possible
+    return list(contas_map.values())
 
 @router.get("/usuarios/{usuario_id}", response_model=User)
 def read_user(

@@ -201,6 +201,12 @@ function formatarAdmin(isAdmin) {
     return '<span class="badge bg-secondary">Usuário</span>';
 }
 
+// Função para formatar o status do usuário (ativo/inativo)
+function formatarStatus(ativo) {
+    if (ativo === undefined || ativo === null) return 'N/A';
+    return ativo ? '<span class="badge bg-success">Ativo</span>' : '<span class="badge bg-secondary">Inativo</span>';
+}
+
 // Função para carregar usuários
 function carregarUsuarios() {
             const token = localStorage.getItem('access_token');

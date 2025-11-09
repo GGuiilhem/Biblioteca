@@ -1,7 +1,6 @@
 {% extends "base.html" %}
 
 {% block extra_css %}
-<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
 <style>
 /* Customizar Select2 para parecer com Bootstrap */
 .select2-container--default .select2-selection--single {
@@ -177,14 +176,9 @@ document.addEventListener('DOMContentLoaded', function() {
     // Verificar se o usuário é admin
     verificarPermissaoAdmin();
     
-    // Carregar autores
+    // Carregar autores e editoras
     carregarAutores();
-    
-    // Carregar editoras
     carregarEditoras();
-    
-    // Configurar Select2 nos selects
-    configurarSelect2();
     
     // Se for edição, carregar dados do livro
     if (isEdicao && livroId) {
@@ -237,20 +231,14 @@ async function carregarAutores() {
         const response = await fetch('/api/v1/autores/');
         if (response.ok) {
             const autores = await response.json();
-            const select = document.getElementById('autor_id');
-            
-            // Limpar opções existentes (manter apenas a primeira)
-            select.innerHTML = '<option value="">Selecione um autor</option>';
-            
-            // Ordenar alfabeticamente
+            // Construir HTML das opções e preencher select nativo
             autores.sort((a, b) => a.nome.localeCompare(b.nome));
-            
+            let optionsHTML = '<option value="">Selecione um autor</option>';
             autores.forEach(autor => {
-                const option = document.createElement('option');
-                option.value = autor.id;
-                option.textContent = autor.nome;
-                select.appendChild(option);
+                optionsHTML += `<option value="${autor.id}">${autor.nome}</option>`;
             });
+            const select = document.getElementById('autor_id');
+            select.innerHTML = optionsHTML;
         }
     } catch (error) {
         console.error('Erro ao carregar autores:', error);
@@ -263,20 +251,13 @@ async function carregarEditoras() {
         
         if (response.ok) {
             const editoras = await response.json();
-            const select = document.getElementById('editora_id');
-            
-            // Limpar opções existentes (manter apenas a primeira)
-            select.innerHTML = '<option value="">Selecione uma editora</option>';
-            
-            // Ordenar alfabeticamente
             editoras.sort((a, b) => a.nome.localeCompare(b.nome));
-            
+            let optionsHTML = '<option value="">Selecione uma editora</option>';
             editoras.forEach(editora => {
-                const option = document.createElement('option');
-                option.value = editora.id;
-                option.textContent = editora.nome;
-                select.appendChild(option);
+                optionsHTML += `<option value="${editora.id}">${editora.nome}</option>`;
             });
+            const select = document.getElementById('editora_id');
+            select.innerHTML = optionsHTML;
         }
     } catch (error) {
         console.error('Erro ao carregar editoras:', error);
@@ -312,10 +293,12 @@ async function carregarDadosLivro(livroId) {
             // Selecionar o autor e editora corretos quando forem carregados
             setTimeout(() => {
                 if (livro.autor_id) {
-                    document.getElementById('autor_id').value = livro.autor_id;
+                    const autorSelect = document.getElementById('autor_id');
+                    if (autorSelect) autorSelect.value = livro.autor_id;
                 }
                 if (livro.editora_id) {
-                    document.getElementById('editora_id').value = livro.editora_id;
+                    const editoraSelect = document.getElementById('editora_id');
+                    if (editoraSelect) editoraSelect.value = livro.editora_id;
                 }
             }, 1500); // Tempo para garantir que autores e editoras sejam carregados
             
@@ -436,19 +419,8 @@ async function salvarLivro() {
 }
 
 function configurarSelect2() {
-    // Configurar Select2 nos selects
-    $('#autor_id').select2({
-        placeholder: 'Selecione um autor',
-        allowClear: false,
-        width: '100%'
-    });
-    
-    $('#editora_id').select2({
-        placeholder: 'Selecione uma editora',
-        allowClear: true,
-        width: '100%'
-    });
+    // função vazia: Select2 removido, mantemos a função para compatibilidade
+    return;
 }
 </script>
-<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 {% endblock %}

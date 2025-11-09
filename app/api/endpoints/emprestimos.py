@@ -183,6 +183,9 @@ def criar_emprestimo(
     db.commit()
     db.refresh(db_emprestimo)
     
+    # Garantir que temos o usuário para preencher a resposta
+    usuario = db.query(DBUsuario).filter(DBUsuario.id == db_emprestimo.usuario_id).first()
+
     # Retornar com dados enriquecidos
     return EmprestimoResponse(
         id=db_emprestimo.id,
@@ -194,7 +197,7 @@ def criar_emprestimo(
         status=db_emprestimo.status,
         multa=db_emprestimo.multa,
         observacoes=db_emprestimo.observacoes,
-        usuario_nome=usuario.nome,
+        usuario_nome=usuario.nome if usuario else None,
         livro_titulo=livro.titulo,
         livro_autor=livro.autor.nome if livro.autor else None
     )

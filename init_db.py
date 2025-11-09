@@ -2,7 +2,13 @@
 """
 Script para inicializar o banco de dados da Biblioteca IMPACTA
 Cria as tabelas e popula com dados iniciais para desenvolvimento
+
+Observação: passe --force para remover o arquivo `biblioteca.db` existente
+e recriar o banco do zero (útil quando o modelo foi alterado).
 """
+
+import argparse
+from pathlib import Path
 
 from app.core.database import engine, SessionLocal, Base
 from app.models.models import (
@@ -217,16 +223,27 @@ def populate_initial_data():
 
 def main():
     """Função principal"""
+    parser = argparse.ArgumentParser(description="Inicializa o banco de dados da Biblioteca IMPACTA")
+    parser.add_argument("--force", action="store_true", help="Remover arquivo biblioteca.db existente antes de criar")
+    args = parser.parse_args()
+
     print("🚀 Inicializando banco de dados da Biblioteca IMPACTA")
     print("=" * 50)
-    
+
     try:
+        # Se solicitado, remove o arquivo do banco de dados para recriar do zero
+        if args.force:
+            db_path = Path(__file__).resolve().parent / "biblioteca.db"
+            if db_path.exists():
+                print(f"Removendo banco existente: {db_path}")
+                db_path.unlink()
+
         create_tables()
         populate_initial_data()
         print("=" * 50)
         print("✅ Banco de dados inicializado com sucesso!")
         print("📚 Você pode agora executar a aplicação com: python main.py")
-        
+
     except Exception as e:
         print(f"❌ Erro durante a inicialização: {e}")
         sys.exit(1)

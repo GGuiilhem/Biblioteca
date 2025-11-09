@@ -44,6 +44,10 @@ class Editora(Base):
     nome = Column(String(100), nullable=False)
     cidade = Column(String(50))
     pais = Column(String(50))
+    endereco = Column(Text, nullable=True)
+    telefone = Column(String(20), nullable=True)
+    email = Column(String(100), nullable=True)
+    website = Column(String(255), nullable=True)
     
     livros = relationship("Livro", back_populates="editora")
 
@@ -86,7 +90,7 @@ class Usuario(Base):
     id = Column(Integer, primary_key=True, index=True)
     nome = Column(String(100), nullable=False)
     email = Column(String(100), unique=True, index=True, nullable=False)
-    cpf = Column(String(11), unique=True, index=True, nullable=False)
+    cpf = Column(String(11), unique=True, index=True, nullable=True)
     matricula = Column(String(20), unique=True, index=True, nullable=False)
     tipo = Column(Enum(TipoUsuario), default=TipoUsuario.ALUNO)
     curso = Column(String(100), nullable=True)
