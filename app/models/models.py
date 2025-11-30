@@ -83,6 +83,7 @@ class Livro(Base):
     editora = relationship("Editora", back_populates="livros")
     categorias = relationship("Categoria", secondary="livro_categoria", back_populates="livros")
     emprestimos = relationship("Emprestimo", back_populates="livro")
+    reservas = relationship("Reserva", back_populates="livro")
 
 class Usuario(Base):
     __tablename__ = "usuarios"
@@ -101,6 +102,7 @@ class Usuario(Base):
     ativo = Column(Boolean, default=True)
     
     emprestimos = relationship("Emprestimo", back_populates="usuario")
+    reservas = relationship("Reserva", back_populates="usuario")
 
 class Emprestimo(Base):
     __tablename__ = "emprestimos"
@@ -157,3 +159,22 @@ class SolicitacaoAutor(Base):
     # Relacionamentos
     solicitante = relationship("UsuarioAuth", foreign_keys=[solicitante_id])
     aprovado_por = relationship("UsuarioAuth", foreign_keys=[aprovado_por_id])
+
+class StatusReserva(str, PyEnum):
+    PENDENTE = "pendente"
+    ATIVA = "ativa"
+    CANCELADA = "cancelada"
+    CONCLUIDA = "concluida"
+
+class Reserva(Base):
+    __tablename__ = "reservas"
+
+    id = Column(Integer, primary_key=True, index=True)
+    usuario_id = Column(Integer, ForeignKey("usuarios.id"), nullable=False)
+    livro_id = Column(Integer, ForeignKey("livros.id"), nullable=False)
+    data_reserva = Column(DateTime, default=datetime.utcnow)
+    status = Column(Enum(StatusReserva), default=StatusReserva.PENDENTE)
+    data_validade = Column(DateTime, nullable=True)
+
+    usuario = relationship("Usuario", back_populates="reservas")
+    livro = relationship("Livro", back_populates="reservas")

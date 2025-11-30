@@ -229,6 +229,13 @@ async def visualizar_usuario(
     )
 
 # Rotas de Autenticação
+@router.get("/minhas-reservas", response_class=HTMLResponse)
+async def minhas_reservas(request: Request):
+    """
+    Página de reservas do usuário
+    """
+    return templates.TemplateResponse("usuarios/minhas_reservas.html", {"request": request})
+
 @router.get("/login", response_class=HTMLResponse)
 async def login_page(request: Request):
     return templates.TemplateResponse(

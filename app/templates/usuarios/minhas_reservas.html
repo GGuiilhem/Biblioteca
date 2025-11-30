@@ -1,0 +1,126 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>Minhas Reservas</h2>
+        <a href="/livros" class="btn btn-primary">
+            <i class="bi bi-plus-circle"></i> Nova Reserva
+        </a>
+    </div>
+
+    <div class="card">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover" id="tabelaReservas">
+                    <thead>
+                        <tr>
+                            <th>Livro</th>
+                            <th>Data Reserva</th>
+                            <th>Validade</th>
+                            <th>Status</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="listaReservas">
+                        <!-- Preenchido via JavaScript -->
+                    </tbody>
+                </table>
+            </div>
+            <div id="loading" class="text-center py-4">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Carregando...</span>
+                </div>
+            </div>
+            <div id="noData" class="text-center py-4 d-none">
+                <p class="text-muted">Nenhuma reserva encontrada.</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', loadReservas);
+
+    async function loadReservas() {
+        try {
+            // TODO: Pegar ID do usuário real do token/sessão
+            const usuarioId = 1;
+            const response = await fetch(`/api/v1/reservas/?usuario_id=${usuarioId}`, {
+                headers: {
+                    'Authorization': `Bearer ${localStorage.getItem('token')}`
+                }
+            });
+
+            const reservas = await response.json();
+            const tbody = document.getElementById('listaReservas');
+            const loading = document.getElementById('loading');
+            const noData = document.getElementById('noData');
+
+            loading.classList.add('d-none');
+
+            if (reservas.length === 0) {
+                noData.classList.remove('d-none');
+                return;
+            }
+
+            tbody.innerHTML = reservas.map(reserva => `
+            <tr>
+                <td>${reserva.livro_id}</td> <!-- Idealmente buscaria o título do livro -->
+                <td>${new Date(reserva.data_reserva).toLocaleDateString()}</td>
+                <td>${reserva.data_validade ? new Date(reserva.data_validade).toLocaleDateString() : '-'}</td>
+                <td>
+                    <span class="badge bg-${getStatusColor(reserva.status)}">
+                        ${reserva.status}
+                    </span>
+                </td>
+                <td>
+                    ${reserva.status === 'pendente' ? `
+                    <button onclick="cancelarReserva(${reserva.id})" class="btn btn-sm btn-danger">
+                        Cancelar
+                    </button>
+                    ` : '-'}
+                </td>
+            </tr>
+        `).join('');
+
+        } catch (error) {
+            console.error('Erro ao carregar reservas:', error);
+            alert('Erro ao carregar suas reservas');
+        }
+    }
+
+    function getStatusColor(status) {
+        const colors = {
+            'pendente': 'warning',
+            'ativa': 'success',
+            'cancelada': 'danger',
+            'concluida': 'info'
+        };
+        return colors[status] || 'secondary';
+    }
+
+    async function cancelarReserva(id) {
+        if (!confirm('Tem certeza que deseja cancelar esta reserva?')) return;
+
+        try {
+            const response = await fetch(`/api/v1/reservas/${id}`, {
+                method: 'DELETE',
+                headers: {
+                    'Authorization': `Bearer ${localStorage.getItem('token')}`
+                }
+            });
+
+            if (response.ok) {
+                loadReservas();
+            } else {
+                alert('Erro ao cancelar reserva');
+            }
+        } catch (error) {
+            console.error('Erro:', error);
+        }
+    }
+</script>
+{% endblock %}
